@@ -5,7 +5,7 @@
   "description": "디지텍 바자회 크레딧 결제 시스템 API 서버",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
   },
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/server.ts",

@@ -9,7 +9,10 @@
 
 ## 시작하기
 
-준비물: Node.js 22 이상 (LTS 권장), npm
+준비물: **Node.js 22.13 이상** (22 LTS 권장 · CI도 최신 22.x), npm
+
+- ESLint · vitest가 22.13 이상을 요구해요. 24 · 26도 되지만 **23 · 25는 지원하지 않아요.** (`package.json`의 `engines`)
+- nvm을 쓴다면 `nvm install && nvm use` 로 `.nvmrc`(22)에 맞춰요.
 
 ```bash
 npm install            # 처음 한 번 (CI처럼 lock 파일 그대로 설치하려면 npm ci)

@@ -19,9 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # .nvmrc(22)를 그대로 써요. check-latest: 러너에 캐시된 옛 버전 대신 항상 최신 22.x
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
+          check-latest: true
           cache: npm
 
       - run: npm ci
