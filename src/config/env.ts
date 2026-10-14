@@ -1,9 +1,16 @@
 import { z } from 'zod';
 
+/** `PORT=` 처럼 값이 비어 있거나 공백뿐이면 "설정 안 함"(undefined)으로 바꿔서 기본값이 쓰이게 해요. */
+const emptyToUndefined = (value: unknown) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
+
 // 서버가 쓰는 환경 변수 목록. 새 값이 필요하면 여기에 추가하고 .env.example 도 함께 고쳐요.
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  NODE_ENV: z.preprocess(
+    emptyToUndefined,
+    z.enum(['development', 'test', 'production']).default('development'),
+  ),
+  PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(65535).default(3000)),
 });
 
 export type Env = z.infer<typeof envSchema>;

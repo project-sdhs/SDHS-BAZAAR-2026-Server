@@ -14,8 +14,17 @@ describe('loadEnv', () => {
     });
   });
 
+  it('PORT= 처럼 비어 있거나 공백뿐인 값은 기본값을 쓴다', () => {
+    expect(loadEnv({ PORT: '' })).toEqual({ PORT: 3000, NODE_ENV: 'development' });
+    expect(loadEnv({ PORT: '   ', NODE_ENV: ' ' })).toEqual({
+      PORT: 3000,
+      NODE_ENV: 'development',
+    });
+  });
+
   it('잘못된 값이면 에러를 던진다', () => {
     expect(() => loadEnv({ PORT: 'abc' })).toThrow(/PORT/);
+    expect(() => loadEnv({ PORT: '0' })).toThrow(/PORT/);
     expect(() => loadEnv({ NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
   });
 });
