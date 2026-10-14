@@ -42,6 +42,7 @@ npm run format:check && npm run lint && npm run typecheck && npm test && npm run
 | ------------- | --------------------------------------------------------------------------------- |
 | `GET /health` | `200` `{ "status": "ok", "uptime": 12, "timestamp": "2026-10-14T09:00:00.000Z" }` |
 | 없는 경로     | `404` `{ "code": "NOT_FOUND", "message": "..." }`                                 |
+| 잘못된 본문   | `400` `INVALID_JSON` · `413` `PAYLOAD_TOO_LARGE` · `415` `UNSUPPORTED_MEDIA_TYPE` |
 
 에러 응답은 모두 `{ code, message }` 모양이에요. 코드에서 에러를 내려면 `throw new HttpError(404, 'BOOTH_NOT_FOUND', '부스를 찾을 수 없습니다.')`.
 
