@@ -11,6 +11,8 @@ const envSchema = z.object({
     z.enum(['development', 'test', 'production']).default('development'),
   ),
   PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(65535).default(3000)),
+  // 이미지 파일을 저장하고 /uploads 로 내려줄 폴더 (상대 경로면 서버를 실행한 위치 기준)
+  UPLOAD_DIR: z.preprocess(emptyToUndefined, z.string().default('uploads')),
 
   // MySQL 접속 정보 (src/db/pool.ts 에서 사용). 사용자 · DB 이름은 꼭 적어야 해요.
   DB_HOST: z.preprocess(emptyToUndefined, z.string().default('127.0.0.1')),

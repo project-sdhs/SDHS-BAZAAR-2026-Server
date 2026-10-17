@@ -7,6 +7,7 @@ const DB_REQUIRED = { DB_USER: 'bazaar', DB_NAME: 'sdhs_bazaar' };
 
 /** DB 값의 기본값 */
 const DB_DEFAULTS = {
+  UPLOAD_DIR: 'uploads',
   DB_HOST: '127.0.0.1',
   DB_PORT: 3306,
   DB_USER: 'bazaar',
