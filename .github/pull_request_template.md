@@ -13,6 +13,7 @@
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm run build`
+- [ ] (DB를 바꿨다면) `npm run db:migrate` · `npm run test:db`
 - [ ] (API를 바꿨다면) API 명세와 응답 모양이 같은지 확인
 
 ## 스크린샷

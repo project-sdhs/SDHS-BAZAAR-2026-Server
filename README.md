@@ -3,7 +3,7 @@
 서울디지텍고등학교 2026 디지텍 바자회 · 크레딧 결제 시스템 API 서버 (Node.js + TypeScript + Express)
 
 > 지금은 **헬스 체크(`GET /health`)** 와 MySQL 사용 예시인 **앱 버전 API(`/app-versions`)** 가 있어요.
-> DB는 **MySQL 8**이고, ORM 없이 [`mysql2`](https://sidorares.github.io/node-mysql2/docs) 로 SQL을 직접 써요. Docker · 배포 설정은 아직 없어요.
+> DB는 **MySQL 8**이고, ORM 없이 [`mysql2`](https://sidorares.github.io/node-mysql2/docs) 로 SQL을 직접 써요. 테이블은 `migrations/` 의 SQL 파일로 만들어요. Docker · 배포 설정은 아직 없어요.
 
 **API 명세:** [디지텍 바자회 API 명세](https://claude.ai/artifact/Qk2heDHJUYqTrHR9WLBoYR) — 새 API는 이 문서를 기준으로 만들어요.
 
@@ -17,18 +17,21 @@
 ```bash
 npm install            # 처음 한 번 (CI처럼 lock 파일 그대로 설치하려면 npm ci)
 cp .env.example .env   # DB_* 값을 내 MySQL에 맞게 채워요 (아래 'MySQL 준비')
+npm run db:migrate     # 테이블 만들기 (migrations/ 중 아직 안 한 것만)
 npm run dev            # DB 연결을 확인한 뒤 http://localhost:3000/health
 ```
 
-| 명령                | 하는 일                                           |
-| ------------------- | ------------------------------------------------- |
-| `npm run dev`       | 개발 서버 실행 (파일을 저장하면 자동 재시작)      |
-| `npm test`          | 테스트 (vitest + supertest), `npm run test:watch` |
-| `npm run lint`      | ESLint 검사                                       |
-| `npm run typecheck` | 타입 검사                                         |
-| `npm run format`    | Prettier로 코드 정리 (`format:check`는 검사만)    |
-| `npm run build`     | TypeScript → `dist/` 빌드                         |
-| `npm start`         | 빌드한 `dist/server.js` 실행                      |
+| 명령                 | 하는 일                                           |
+| -------------------- | ------------------------------------------------- |
+| `npm run dev`        | 개발 서버 실행 (파일을 저장하면 자동 재시작)      |
+| `npm test`           | 테스트 (vitest + supertest), `npm run test:watch` |
+| `npm run test:db`    | 실제 MySQL(테스트 DB)에 붙는 테스트 (`tests/db/`) |
+| `npm run db:migrate` | `migrations/` 의 SQL 중 아직 안 한 것을 실행      |
+| `npm run lint`       | ESLint 검사                                       |
+| `npm run typecheck`  | 타입 검사                                         |
+| `npm run format`     | Prettier로 코드 정리 (`format:check`는 검사만)    |
+| `npm run build`      | TypeScript → `dist/` 빌드                         |
+| `npm start`          | 빌드한 `dist/server.js` 실행                      |
 
 PR 올리기 전에 CI와 같은 검사를 한 번에:
 
@@ -36,20 +39,25 @@ PR 올리기 전에 CI와 같은 검사를 한 번에:
 npm run format:check && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
+DB 쪽(SQL · 마이그레이션 · 저장소)을 바꿨다면 `npm run test:db` 도 돌려요. CI는 MySQL 8.0을 띄워서 마이그레이션 → DB 테스트까지 돌려요.
+
 ### MySQL 준비
 
 서버는 켜질 때 DB에 연결해 보고, 연결이 안 되면 켜지지 않아요.
 
-1. 내 컴퓨터의 MySQL에 DB와 계정을 만들어요. (`mysql -u root -p` 로 들어가서)
+1. 내 컴퓨터의 MySQL(8.0 이상)에 개발용 DB · 테스트용 DB · 계정을 만들어요. (`mysql -u root -p` 로 들어가서)
 
    ```sql
    CREATE DATABASE sdhs_bazaar CHARACTER SET utf8mb4;
+   CREATE DATABASE sdhs_bazaar_test CHARACTER SET utf8mb4;
    CREATE USER 'bazaar'@'localhost' IDENTIFIED BY '내가 정한 비밀번호';
    GRANT ALL PRIVILEGES ON sdhs_bazaar.* TO 'bazaar'@'localhost';
+   GRANT ALL PRIVILEGES ON sdhs_bazaar_test.* TO 'bazaar'@'localhost';
    ```
 
-2. 테이블을 만들어요: `mysql -u bazaar -p sdhs_bazaar < db/app_versions.sql`
-3. `.env` 의 `DB_USER` · `DB_PASSWORD` · `DB_NAME` 을 위에서 정한 값으로 채워요.
+2. `.env` 의 `DB_USER` · `DB_PASSWORD` · `DB_NAME` 을 위에서 정한 값으로 채워요.
+3. `npm run db:migrate` 로 테이블을 만들어요.
+4. (DB 테스트를 돌릴 때) `cp .env.test.example .env.test` → `npm run test:db`. 테스트는 `.env.test` 의 `sdhs_bazaar_test` 를 써요.
 
 팀 서버 DB는 밖에서 바로 열리지 않아요(127.0.0.1 전용). 접속 정보는 팀장에게 받아서, SSH 터널을 연 뒤 `.env` 의 `DB_PORT` 에 터널 포트를 적어요.
 
@@ -57,7 +65,7 @@ npm run format:check && npm run lint && npm run typecheck && npm test && npm run
 
 | 요청                       | 응답                                                                                          |
 | -------------------------- | --------------------------------------------------------------------------------------------- |
-| `GET /health`              | `200` `{ "status": "ok", "uptime": 12, "timestamp": "2026-10-14T09:00:00.000Z" }`             |
+| `GET /health`              | `200` `{ "status": "ok", "db": "ok", "time": "2026-10-17T09:00:00.000Z" }` · DB 실패면 `503`  |
 | `GET /app-versions`        | `200` `{ "items": [앱 버전, …] }` (최근 순)                                                   |
 | `GET /app-versions/latest` | `200` 지금 앱 버전 · 없으면 `404`                                                             |
 | `GET /app-versions/:id`    | `200` 앱 버전 · 없으면 `404`                                                                  |
@@ -77,8 +85,10 @@ npm run format:check && npm run lint && npm run typecheck && npm test && npm run
 ```
 src/
   app.ts            # createApp(): 미들웨어 · 라우터 · 404 · 에러 핸들러 조립 (테스트에서도 사용)
-  server.ts         # 환경 변수를 읽고 서버 실행 (app.listen)
-  config/           # 환경 변수 검사 (env.ts, zod) · MySQL 연결 풀 (db.ts)
+  server.ts         # 환경 변수를 읽고 DB 연결을 확인한 뒤 서버 실행 (app.listen)
+  migrate.ts        # npm run db:migrate 가 실행하는 파일
+  config/           # 환경 변수 검사 (env.ts, zod)
+  db/               # MySQL 연결 풀 (pool.ts) · 트랜잭션 (transaction.ts) · 마이그레이션 도구 (migrator.ts)
   routes/           # URL ↔ 컨트롤러 연결 (index.ts에서 모든 라우터를 모아요)
   controllers/      # 요청을 받아 응답을 보내요 (health.controller.ts)
   services/         # 비즈니스 로직 (예: credit.service.ts)
@@ -86,8 +96,8 @@ src/
   models/           # 데이터 타입 · zod 스키마
   middlewares/      # 공통 미들웨어 (not-found.ts, error-handler.ts)
   utils/            # 작은 도움 코드 (http-error.ts)
-tests/              # 테스트 (*.test.ts, supertest로 createApp() 호출)
-db/                 # 테이블을 만드는 SQL (app_versions.sql)
+tests/              # 테스트 (*.test.ts, supertest로 createApp() 호출) · tests/db/ 는 실제 DB 테스트
+migrations/         # 테이블을 만들고 바꾸는 SQL (001_create_app_versions.sql …)
 ```
 
 ## MySQL 쓰는 법 (앱 버전 API 예시)
@@ -95,7 +105,7 @@ db/                 # 테이블을 만드는 SQL (app_versions.sql)
 요청 하나가 지나가는 길: `routes/app-version.routes.ts` → `controllers/app-version.controller.ts`(입력 검사) → `services/app-version.service.ts`(규칙: 없으면 404, 같은 버전이면 409) → `repositories/app-version.repository.ts`(SQL)
 
 ```ts
-import { getPool } from '../config/db.js';
+import { getPool } from '../db/pool.js';
 
 // 읽기: 결과는 [rows, fields]. rows 는 한 줄이 객체 하나인 배열이에요.
 const [rows] = await getPool().execute<AppVersionRow[]>(
@@ -116,6 +126,35 @@ const [result] = await getPool().execute<ResultSetHeader>(
 - `BOOLEAN` 은 MySQL 안에서 `TINYINT(1)` 이라 `0` / `1` 로 와요. `=== 1` 로 `true` / `false` 로 바꿔요.
 - `TIMESTAMP` 는 JS `Date` 로 와요. 응답에는 `toISOString()` 으로 보내요.
 - 테스트(`tests/app-version.test.ts`)는 DB 없이 돌도록 저장소를 메모리 가짜로 바꿔요(`vi.mock`).
+
+### 테이블 만들기 · 바꾸기 (마이그레이션)
+
+1. `migrations/` 에 다음 번호로 SQL 파일을 만들어요. 이름 규칙: 숫자 3자리 + 소문자 설명 (예: `002_create_classes.sql`)
+2. `npm run db:migrate` → 아직 실행하지 않은 파일만 번호 순서대로 실행하고, `schema_migrations` 표에 기록해요.
+3. SQL 파일도 PR에 같이 올려요. 다른 사람은 받은 뒤 `npm run db:migrate` 한 번이면 같은 테이블이 생겨요.
+
+- **이미 실행한 파일은 고치지 않아요.** 바꿀 게 생기면 `ALTER TABLE` 을 담은 새 파일을 추가해요. (고치면 도구가 멈춰요)
+- 새 파일에는 `IF NOT EXISTS` 를 붙이지 않아요. 이미 있으면 에러가 나야 실수를 알 수 있어요. (001만 예외: 팀 서버에 손으로 먼저 만들어 둔 표)
+- MySQL은 `CREATE` · `ALTER` 를 되돌릴 수 없어요. 파일 중간에서 실패하면 앞 문장은 실행된 상태라, 손으로 정리한 뒤 파일을 고쳐 다시 실행해요.
+
+### 트랜잭션 (여러 쿼리를 한 번에)
+
+돈이 움직이는 일처럼 "전부 되거나 전부 안 되거나" 해야 하면 `withTransaction` 을 써요. (서버 규칙 1)
+
+```ts
+import { withTransaction } from '../db/transaction.js';
+
+const paymentId = await withTransaction(async (connection) => {
+  await connection.execute('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId]);
+  const [result] = await connection.execute<ResultSetHeader>('INSERT INTO payments …', [/* … */]);
+  return result.insertId;
+});
+```
+
+- 끝까지 성공하면 COMMIT, 에러가 나면 ROLLBACK 하고 에러를 다시 던져요.
+- 교착(1213) · 잠금 대기 초과(1205)는 처음부터 다시 실행해요(최대 3번). 그래서 `fn` 은 여러 번 실행될 수 있어요.
+- 안에서는 꼭 넘겨받은 `connection` 으로 쿼리해요. `getPool()` 로 하면 트랜잭션 밖에서 실행돼요.
+- 외부 호출(Google · Redis · 파일 · 알림)은 트랜잭션 밖, 커밋이 끝난 뒤에 해요.
 
 새 API 추가 순서(예: 부스 목록): `controllers/booth.controller.ts` → `routes/booth.routes.ts` → `routes/index.ts`에 `router.use('/booths', boothRouter)` 한 줄 → `tests/booth.test.ts`.
 

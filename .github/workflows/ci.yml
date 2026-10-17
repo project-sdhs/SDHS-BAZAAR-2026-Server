@@ -34,3 +34,40 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  db:
+    name: DB 테스트 (MySQL 8.0)
+    runs-on: ubuntu-latest
+    # 팀 서버와 같은 MySQL 8.0을 띄워서, 빈 DB에 마이그레이션 → 실제 DB 테스트까지 돌려요.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sdhs_bazaar_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: sdhs_bazaar_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: npm
+
+      - run: npm ci
+      # 빈 DB에 migrations/ 가 처음부터 끝까지 실행되는지 확인
+      - run: npm run db:migrate
+      - run: npm run test:db

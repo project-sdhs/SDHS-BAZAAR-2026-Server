@@ -1,10 +1,10 @@
 import { createApp } from './app.js';
-import { checkDbConnection } from './config/db.js';
 import { loadEnv } from './config/env.js';
+import { checkDbConnection } from './db/pool.js';
 
 const env = loadEnv();
 
-// DB에 먼저 연결해 보고, 안 되면 서버를 켜지 않아요.
+// DB에 먼저 연결해 보고(세션 설정까지 확인), 안 되면 서버를 켜지 않아요.
 try {
   await checkDbConnection();
 } catch (error) {

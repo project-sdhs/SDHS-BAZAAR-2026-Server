@@ -1,6 +1,6 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 
-import { getPool } from '../config/db.js';
+import { getPool } from '../db/pool.js';
 import type { AppVersion } from '../models/app-version.model.js';
 
 /** app_versions 테이블 한 줄 (DB 컬럼 이름 그대로) */

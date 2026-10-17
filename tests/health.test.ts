@@ -1,28 +1,46 @@
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../src/app.js';
 
+// CI의 기본 테스트에는 DB가 없어서, DB 확인(pingDb)만 가짜로 바꿔요.
+const pingDb = vi.hoisted(() => vi.fn<() => Promise<void>>());
+vi.mock(import('../src/db/pool.js'), async (importOriginal) => ({
+  ...(await importOriginal()),
+  pingDb,
+}));
+
 describe('GET /health', () => {
-  it('200과 상태 정보를 돌려준다', async () => {
+  beforeEach(() => {
+    pingDb.mockReset();
+  });
+
+  it('DB가 정상이면 200과 { status, db, time } 을 돌려준다', async () => {
+    pingDb.mockResolvedValue();
+
     const res = await request(createApp()).get('/health');
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/application\/json/);
-    expect(res.body).toEqual({
-      status: 'ok',
-      uptime: expect.any(Number) as number,
-      timestamp: expect.any(String) as string,
-    });
+    expect(res.body).toEqual({ status: 'ok', db: 'ok', time: expect.any(String) as string });
   });
 
-  it('uptime은 0 이상의 정수(초), timestamp는 ISO 8601 시각이다', async () => {
-    const res = await request(createApp()).get('/health');
-    const body = res.body as { uptime: number; timestamp: string };
+  it('time 은 ISO 8601(UTC) 시각이다', async () => {
+    pingDb.mockResolvedValue();
 
-    expect(Number.isInteger(body.uptime)).toBe(true);
-    expect(body.uptime).toBeGreaterThanOrEqual(0);
-    expect(new Date(body.timestamp).toISOString()).toBe(body.timestamp);
+    const res = await request(createApp()).get('/health');
+    const { time } = res.body as { time: string };
+
+    expect(new Date(time).toISOString()).toBe(time);
+  });
+
+  it('DB에 연결할 수 없으면 503과 db: error 를 돌려준다', async () => {
+    pingDb.mockRejectedValue(new Error('connect ECONNREFUSED'));
+
+    const res = await request(createApp()).get('/health');
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: 'error', db: 'error', time: expect.any(String) as string });
   });
 });
 
