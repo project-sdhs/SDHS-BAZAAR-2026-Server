@@ -11,6 +11,13 @@ const envSchema = z.object({
     z.enum(['development', 'test', 'production']).default('development'),
   ),
   PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(65535).default(3000)),
+
+  // MySQL 접속 정보 (src/config/db.ts 에서 사용). 사용자 · DB 이름은 꼭 적어야 해요.
+  DB_HOST: z.preprocess(emptyToUndefined, z.string().default('127.0.0.1')),
+  DB_PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(65535).default(3306)),
+  DB_USER: z.preprocess(emptyToUndefined, z.string({ error: 'DB_USER 를 .env 에 적어 주세요.' })),
+  DB_PASSWORD: z.string().default(''),
+  DB_NAME: z.preprocess(emptyToUndefined, z.string({ error: 'DB_NAME 을 .env 에 적어 주세요.' })),
 });
 
 export type Env = z.infer<typeof envSchema>;
