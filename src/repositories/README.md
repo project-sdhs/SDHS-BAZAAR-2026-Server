@@ -1,4 +1,5 @@
 # repositories
 
-DB 읽기/쓰기를 담당하는 곳이에요. DB가 아직 정해지지 않아서 비어 있어요. DB가 정해지면 여기에 추가해요.
-예: `user.repository.ts`
+DB 읽기/쓰기를 담당하는 곳이에요. SQL은 여기에만 써요.
+`getPool().execute(sql, [값들])` 로 MySQL을 부르고, 결과를 API 모양으로 바꿔서 돌려줘요.
+예: `app-version.repository.ts`
