@@ -4,6 +4,9 @@ node_modules/
 
 # Build output
 dist/
+
+# 올린 이미지 (UPLOAD_DIR 기본값)
+/uploads/
 *.tsbuildinfo
 
 # Test coverage

@@ -16,7 +16,7 @@ try {
 }
 console.log(`[${env.NODE_ENV}] DB 연결 OK → ${env.DB_NAME} (${env.DB_HOST}:${env.DB_PORT})`);
 
-const app = createApp();
+const app = createApp({ uploadDir: env.UPLOAD_DIR });
 
 app.listen(env.PORT, (error) => {
   if (error) {
