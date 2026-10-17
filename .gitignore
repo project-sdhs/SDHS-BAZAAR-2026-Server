@@ -31,10 +31,11 @@ vite.config.*.timestamp-*
 vitest.config.*.timestamp-*
 .vite/
 
-# dotenv environment variable files (.env.example 만 올려요)
+# dotenv environment variable files (.env.example · .env.test.example 만 올려요)
 .env
 .env.*
 !.env.example
+!.env.test.example
 
 # Output of 'npm pack'
 *.tgz

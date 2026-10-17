@@ -13,6 +13,8 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "vitest run --config vitest.db.config.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
