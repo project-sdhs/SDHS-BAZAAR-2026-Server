@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { checkDbConnection } from './db/pool.js';
+import { logger } from './config/logger.js';
 
 const env = loadEnv();
 
@@ -14,7 +15,7 @@ try {
     { cause: error },
   );
 }
-console.log(`[${env.NODE_ENV}] DB 연결 OK → ${env.DB_NAME} (${env.DB_HOST}:${env.DB_PORT})`);
+logger.info({ db: env.DB_NAME, host: env.DB_HOST, port: env.DB_PORT }, 'DB 연결 OK');
 
 const app = createApp({ uploadDir: env.UPLOAD_DIR });
 
@@ -22,5 +23,5 @@ app.listen(env.PORT, (error) => {
   if (error) {
     throw error;
   }
-  console.log(`[${env.NODE_ENV}] 서버 실행 중 → http://localhost:${env.PORT}/health`);
+  logger.info({ port: env.PORT }, '서버 실행 중');
 });
