@@ -1,8 +1,11 @@
 import { STATUS_CODES } from 'node:http';
 
 import type { NextFunction, Request, Response } from 'express';
+import { ZodError } from 'zod';
 
 import { HttpError, type ErrorResponse } from '../utils/http-error.js';
+
+
 
 /** 자주 만나는 4xx 응답. 여기에 없는 4xx는 상태 이름으로 code를 만들어요. (예: 405 → METHOD_NOT_ALLOWED) */
 const CLIENT_ERRORS: Partial<Record<number, ErrorResponse>> = {
@@ -52,13 +55,27 @@ function clientErrorResponse(status: number): ErrorResponse {
   };
 }
 
+/** 에러 응답을 보내요. 요청 ID가 있으면 본문에도 넣어 줘요. */
+function sendError(req: Request, res: Response<ErrorResponse>, status: number, body: ErrorResponse): void {
+  const requestId = typeof req.id === 'string' ? req.id : undefined;
+  res.status(status).json(requestId === undefined ? body : { ...body, requestId });
+}
+
+/** zod 검증 실패를 [{ path: 'items.0.quantity', message: '...' }] 모양으로 바꿔요. */
+function zodDetails(err: ZodError): { path: string; message: string }[] {
+  return err.issues.map((issue) => ({
+    path: issue.path.map(String).join('.'),
+    message: issue.message,
+  }));
+}
+
 /**
- * 모든 에러를 { code, message } JSON으로 바꿔 응답해요.
+ * 모든 에러를 { code, message, requestId?, details? } JSON으로 바꿔 응답해요.
  * Express는 매개변수가 4개인 함수를 에러 핸들러로 인식하므로 next 를 지우면 안 돼요.
  */
 export function errorHandler(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response<ErrorResponse>,
   next: NextFunction,
 ): void {
@@ -68,27 +85,48 @@ export function errorHandler(
     return;
   }
 
+  // 1) 우리가 만든 에러 (HttpError와 그 자식들)
   if (err instanceof HttpError) {
-    res.status(err.status).json({ code: err.code, message: err.message });
+    if (err.status >= 500) {
+      res.err = err; // 5xx는 요청 로그에 진짜 에러를 같이 남겨요.
+    }
+    sendError(req, res, err.status, {
+      code: err.code,
+      message: err.message,
+      ...(err.details === undefined ? {} : { details: err.details }),
+    });
     return;
   }
 
+  // 2) zod 입력 검증 실패
+  if (err instanceof ZodError) {
+    sendError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '입력값이 올바르지 않습니다.',
+      details: zodDetails(err),
+    });
+    return;
+  }
+
+  // 3) 깨진 JSON 본문
   if (isJsonParseError(err)) {
-    res
-      .status(400)
-      .json({ code: 'INVALID_JSON', message: '요청 본문이 올바른 JSON 형식이 아닙니다.' });
+    sendError(req, res, 400, {
+      code: 'INVALID_JSON',
+      message: '요청 본문이 올바른 JSON 형식이 아닙니다.',
+    });
     return;
   }
 
-  // 요청 쪽 잘못(4xx)은 서버 에러가 아니므로 로그 없이 그 상태 코드로 알려 줘요.
+  // 4) 요청 쪽 잘못(4xx)은 서버 에러가 아니므로 로그 없이 그 상태 코드로 알려 줘요.
   const clientStatus = getClientErrorStatus(err);
   if (clientStatus !== undefined) {
-    res.status(clientStatus).json(clientErrorResponse(clientStatus));
+    sendError(req, res, clientStatus, clientErrorResponse(clientStatus));
     return;
   }
 
-  console.error(err);
-  res.status(500).json({
+  // 5) 나머지는 전부 서버 에러. 내부 내용은 숨기고, 진짜 에러는 요청 로그에만 남겨요.
+  res.err = err instanceof Error ? err : new Error(String(err));
+  sendError(req, res, 500, {
     code: 'INTERNAL_SERVER_ERROR',
     message: '서버에서 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.',
   });

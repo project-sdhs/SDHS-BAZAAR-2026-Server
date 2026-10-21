@@ -58,7 +58,11 @@ describe('이미지 정적 서빙 (/uploads)', () => {
     ]) {
       const res = await request(app).get(url);
       expect(res.status, url).toBe(404);
-      expect(res.body, url).toEqual({ code: 'NOT_FOUND', message: expect.any(String) as string });
+      expect(res.body, url).toEqual({
+        code: 'NOT_FOUND',
+        message: expect.any(String) as string,
+        requestId: expect.any(String) as string,
+      });
     }
   });
 
