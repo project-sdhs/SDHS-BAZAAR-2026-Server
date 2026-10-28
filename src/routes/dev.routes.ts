@@ -8,7 +8,6 @@ import {
   UnauthorizedError,
 } from '../utils/http-error.js';
 
-
 export const devRouter = Router();
 
 devRouter.get('/error', (req, res) => {
@@ -20,7 +19,11 @@ devRouter.get('/error', (req, res) => {
     case '404':
       throw new NotFoundError({ code: 'BOOTH_NOT_FOUND', message: '부스를 찾을 수 없습니다.' });
     case '409':
-      throw new ConflictError({ code: 'ALREADY_PAID', message: '이미 결제된 주문입니다.' });
+      throw new ConflictError({
+        code: 'INSUFFICIENT_CREDIT',
+        message: '크레딧이 부족해요.',
+        extra: { balance: 3000, total: 5000, shortfall: 2000 },
+      });
     case 'zod': {
       z.object({ name: z.string(), quantity: z.number().int().min(1) }).parse({ quantity: 0 });
       res.json({ ok: true });
