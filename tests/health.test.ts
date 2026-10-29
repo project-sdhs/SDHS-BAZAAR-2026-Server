@@ -52,6 +52,7 @@ describe('없는 경로', () => {
     expect(res.body).toEqual({
       code: 'NOT_FOUND',
       message: expect.any(String) as string,
+      requestId: expect.any(String) as string,
     });
   });
 });

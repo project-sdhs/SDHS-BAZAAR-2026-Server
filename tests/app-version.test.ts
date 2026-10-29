@@ -105,6 +105,7 @@ describe('앱 버전 API', () => {
       expect(res.body).toEqual({
         code: 'VALIDATION_FAILED',
         message: expect.any(String) as string,
+        requestId: expect.any(String) as string,
       });
     }
   });
@@ -115,7 +116,7 @@ describe('앱 버전 API', () => {
     const res = await request(app).post('/app-versions').send({ version: '1.0.0' });
 
     expect(res.status).toBe(409);
-    expect(res.body).toMatchObject({ code: 'CONFLICT' });
+    expect(res.body).toMatchObject({ code: 'CONFLICT', requestId: expect.any(String) as string });
   });
 
   it('PATCH 는 보낸 값만 바꾼다', async () => {
