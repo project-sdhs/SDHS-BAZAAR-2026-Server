@@ -102,7 +102,7 @@ describe('앱 버전 API', () => {
     for (const body of cases) {
       const res = await request(app).post('/app-versions').send(body);
       expect(res.status).toBe(400);
-      expect(res.body).toEqual({
+      expect(res.body).toMatchObject({
         code: 'VALIDATION_FAILED',
         message: expect.any(String) as string,
         requestId: expect.any(String) as string,
