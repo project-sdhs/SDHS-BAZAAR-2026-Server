@@ -51,11 +51,26 @@ describe('validateRequest', () => {
     expect(res.body).toMatchObject({
       code: 'VALIDATION_FAILED',
       fields: {
-        'body.name': expect.any(String) as string,
-        'query.limit': expect.any(String) as string,
-        'params.id': expect.any(String) as string,
+        name: expect.any(String) as string,
+        limit: expect.any(String) as string,
+        id: expect.any(String) as string,
       },
       requestId: expect.any(String) as string,
     });
+  });
+
+  it('객체 전체가 잘못된 입력은 _root 필드로 반환한다', async () => {
+    const app = express();
+    app.use(express.json());
+    app.post('/records', validateRequest({ body: z.object({ name: z.string() }) }), (_req, res) => {
+      res.json({ ok: true });
+    });
+    app.use(errorHandler);
+
+    const res = await request(app).post('/records').send([]);
+
+    expect(res.status).toBe(400);
+    const fields = (res.body as { fields: Record<string, string> }).fields;
+    expect(fields).toMatchObject({ _root: expect.any(String) as string });
   });
 });

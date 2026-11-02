@@ -114,7 +114,7 @@ uploads/            # 올린 이미지 (UPLOAD_DIR 기본값, git에 안 올라�
 
 요청 하나가 지나가는 길: `routes/app-version.routes.ts`(입력 스키마를 `validateRequest` 에 연결) → `middlewares/validate-request.ts`(body · query · params 검사) → `controllers/app-version.controller.ts`(검증된 `res.locals.validated` 사용) → `services/app-version.service.ts`(규칙: 없으면 404, 같은 버전이면 409) → `repositories/app-version.repository.ts`(SQL)
 
-새 API에서 입력을 검사할 때는 라우트에 `validateRequest({ body, query, params })` 를 연결하고, 컨트롤러에서는 `res.locals.validated` 값만 사용해요. 실패한 값은 SRV-03 공통 에러 핸들러로 전달되며 `fields` 키에 `body.`, `query.`, `params.` 위치가 붙어요.
+새 API에서 입력을 검사할 때는 라우트에 `validateRequest({ body, query, params })` 를 연결하고, 컨트롤러에서는 `res.locals.validated` 값만 사용해요. 실패한 값은 SRV-03 공통 에러 핸들러로 전달되며 `fields` 키는 `amount` 처럼 필드 이름만 사용해요. 특정 필드가 아닌 본문 전체 오류는 `_root` 키에 담아요.
 
 ```ts
 import { getPool } from '../db/pool.js';

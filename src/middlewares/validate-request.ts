@@ -15,13 +15,7 @@ export type ValidatedRequestLocals<S extends RequestSchemas> = {
 
 export function validateRequest<const S extends RequestSchemas>(
   schemas: S,
-): RequestHandler<
-  ParamsDictionary,
-  unknown,
-  unknown,
-  ParsedQs,
-  ValidatedRequestLocals<S>
-> {
+): RequestHandler<ParamsDictionary, unknown, unknown, ParsedQs, ValidatedRequestLocals<S>> {
   return (req, res, next) => {
     const validated: Record<string, unknown> = {};
     const issues: z.ZodIssue[] = [];
@@ -36,12 +30,7 @@ export function validateRequest<const S extends RequestSchemas>(
       if (result.success) {
         validated[source] = result.data;
       } else {
-        issues.push(
-          ...result.error.issues.map((issue) => ({
-            ...issue,
-            path: [source, ...issue.path],
-          })),
-        );
+        issues.push(...result.error.issues);
       }
     }
 

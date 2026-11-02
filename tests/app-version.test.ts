@@ -107,6 +107,10 @@ describe('앱 버전 API', () => {
         message: expect.any(String) as string,
         requestId: expect.any(String) as string,
       });
+      if (Object.keys(body).length === 0) {
+        const fields = (res.body as { fields: Record<string, string> }).fields;
+        expect(fields).toMatchObject({ version: expect.any(String) as string });
+      }
     }
   });
 
