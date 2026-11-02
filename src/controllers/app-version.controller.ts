@@ -1,26 +1,13 @@
 import type { Request, Response } from 'express';
-import type { z } from 'zod';
 
 import {
-  appVersionIdParam,
+  appVersionParams,
   createAppVersionBody,
   updateAppVersionBody,
   type AppVersion,
 } from '../models/app-version.model.js';
+import type { ValidatedRequestLocals } from '../middlewares/validate-request.js';
 import * as appVersionService from '../services/app-version.service.js';
-import { HttpError } from '../utils/http-error.js';
-
-/**
- * zod 스키마로 검사해서 통과한 값을 돌려줘요. 틀리면 400 VALIDATION_FAILED 를 던져요.
- * (입력 검증 미들웨어(SRV-04)가 생기면 그쪽으로 옮겨요)
- */
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    throw new HttpError(400, 'VALIDATION_FAILED', result.error.issues[0].message);
-  }
-  return result.data;
-}
 
 // Express 5 는 async 함수에서 던진 에러도 에러 핸들러로 넘겨줘요. 그래서 try/catch 가 없어도 돼요.
 
@@ -40,25 +27,34 @@ export async function getLatestAppVersion(_req: Request, res: Response<AppVersio
 
 /** GET /app-versions/:id */
 export async function getAppVersion(
-  req: Request<{ id: string }>,
-  res: Response<AppVersion>,
+  _req: Request,
+  res: Response<AppVersion, ValidatedRequestLocals<{ params: typeof appVersionParams }>>,
 ): Promise<void> {
-  const id = parse(appVersionIdParam, req.params.id);
+  const { id } = res.locals.validated.params;
   res.json(await appVersionService.getAppVersion(id));
 }
 
 /** POST /app-versions — 새 버전 등록 */
-export async function createAppVersion(req: Request, res: Response<AppVersion>): Promise<void> {
-  const input = parse(createAppVersionBody, req.body);
+export async function createAppVersion(
+  _req: Request,
+  res: Response<AppVersion, ValidatedRequestLocals<{ body: typeof createAppVersionBody }>>,
+): Promise<void> {
+  const input = res.locals.validated.body;
   res.status(201).json(await appVersionService.createAppVersion(input));
 }
 
 /** PATCH /app-versions/:id — 버전 · 강제 업데이트 여부 수정 */
 export async function updateAppVersion(
-  req: Request<{ id: string }>,
-  res: Response<AppVersion>,
+  _req: Request,
+  res: Response<
+    AppVersion,
+    ValidatedRequestLocals<{
+      params: typeof appVersionParams;
+      body: typeof updateAppVersionBody;
+    }>
+  >,
 ): Promise<void> {
-  const id = parse(appVersionIdParam, req.params.id);
-  const input = parse(updateAppVersionBody, req.body);
+  const { id } = res.locals.validated.params;
+  const input = res.locals.validated.body;
   res.json(await appVersionService.updateAppVersion(id, input));
 }

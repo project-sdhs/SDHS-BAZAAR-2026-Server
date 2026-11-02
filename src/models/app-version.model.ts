@@ -52,5 +52,8 @@ export const appVersionIdParam = z.coerce
   .int('id 는 1 이상의 정수여야 합니다.')
   .positive('id 는 1 이상의 정수여야 합니다.');
 
+/** GET/PATCH /app-versions/:id 경로 파라미터 */
+export const appVersionParams = z.object({ id: appVersionIdParam });
+
 export type CreateAppVersionInput = z.infer<typeof createAppVersionBody>;
 export type UpdateAppVersionInput = z.infer<typeof updateAppVersionBody>;
