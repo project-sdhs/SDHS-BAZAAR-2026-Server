@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -29,9 +28,7 @@ describe('DB-11 Booth QR and Board Device Schema', () => {
 
     const tables = [...new Set(rows.map((row) => row.TABLE_NAME))];
 
-    expect(tables.sort()).toEqual(
-      ['booth_qr_codes', 'board_devices'].sort(),
-    );
+    expect(tables.sort()).toEqual(['booth_qr_codes', 'board_devices'].sort());
   });
 
   it('외래 키 3개가 올바르게 연결되어 있다', async () => {
@@ -44,8 +41,7 @@ describe('DB-11 Booth QR and Board Device Schema', () => {
     );
 
     const actual = rows.map(
-      (row) =>
-        `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
+      (row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
     );
 
     expect(actual.sort()).toEqual(
@@ -88,13 +84,8 @@ describe('DB-11 Booth QR and Board Device Schema', () => {
     );
 
     expect(rows).toHaveLength(2);
-    expect(
-      rows.map((row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}`).sort(),
-    ).toEqual(
-      [
-        'booth_qr_codes.deactivated_at',
-        'board_devices.revoked_at',
-      ].sort(),
+    expect(rows.map((row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}`).sort()).toEqual(
+      ['booth_qr_codes.deactivated_at', 'board_devices.revoked_at'].sort(),
     );
   });
 });

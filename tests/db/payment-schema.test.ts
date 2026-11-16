@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -30,17 +29,10 @@ describe('DB-12 Payment Schema', () => {
          )`,
     );
 
-    const tables = [...new Set(
-      rows.map((row) => row.TABLE_NAME),
-    )];
+    const tables = [...new Set(rows.map((row) => row.TABLE_NAME))];
 
     expect(tables.sort()).toEqual(
-      [
-        'booth_daily_payment_counters',
-        'payments',
-        'payment_items',
-        'payment_refunds',
-      ].sort(),
+      ['booth_daily_payment_counters', 'payments', 'payment_items', 'payment_refunds'].sort(),
     );
   });
 
@@ -62,8 +54,7 @@ describe('DB-12 Payment Schema', () => {
     );
 
     const actual = rows.map(
-      (row) =>
-        `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
+      (row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
     );
 
     expect(actual.sort()).toEqual(

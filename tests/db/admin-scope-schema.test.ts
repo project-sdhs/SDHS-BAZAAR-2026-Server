@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -28,12 +27,7 @@ describe('DB-07, DB-08 Admin Scope Schema', () => {
 
     const names = rows.map((row) => row.TABLE_NAME);
 
-    expect(names.sort()).toEqual(
-      [
-        'admin_account_booths',
-        'admin_account_classes',
-      ].sort(),
-    );
+    expect(names.sort()).toEqual(['admin_account_booths', 'admin_account_classes'].sort());
   });
 
   it('관리자 담당 범위의 FK 4개가 정확하다', async () => {
@@ -52,8 +46,7 @@ describe('DB-07, DB-08 Admin Scope Schema', () => {
     );
 
     const actual = rows.map(
-      (row) =>
-        `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
+      (row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
     );
 
     expect(actual.sort()).toEqual(

@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -45,16 +44,10 @@ describe('DB-09 Audit Log Schema', () => {
          AND REFERENCED_TABLE_NAME IS NOT NULL`,
     );
 
-    const actual = rows.map(
-      (row) => `${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
-    );
+    const actual = rows.map((row) => `${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`);
 
     expect(actual.sort()).toEqual(
-      [
-        'actor_admin_id->admin_accounts',
-        'actor_user_id->users',
-        'booth_id->booths',
-      ].sort(),
+      ['actor_admin_id->admin_accounts', 'actor_user_id->users', 'booth_id->booths'].sort(),
     );
   });
 
@@ -74,4 +67,3 @@ describe('DB-09 Audit Log Schema', () => {
     }
   });
 });
-

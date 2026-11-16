@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -57,8 +56,7 @@ describe('DB-05 Booth Schema', () => {
     );
 
     const actual = rows.map(
-      (row) =>
-        `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
+      (row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
     );
 
     expect(actual.sort()).toEqual(
@@ -89,9 +87,7 @@ describe('DB-05 Booth Schema', () => {
          AND tc.CONSTRAINT_TYPE = 'CHECK'`,
     );
 
-    const clauses = rows
-      .map((row) => row.CHECK_CLAUSE.toLowerCase())
-      .join(' ');
+    const clauses = rows.map((row) => row.CHECK_CLAUSE.toLowerCase()).join(' ');
 
     expect(clauses).toContain('price');
     expect(clauses).toContain('sort_order');

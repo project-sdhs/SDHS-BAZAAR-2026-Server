@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -28,9 +27,7 @@ describe('DB-10 Bazaar Settings Schema', () => {
 
     const names = rows.map((row) => row.TABLE_NAME);
 
-    expect(names.sort()).toEqual(
-      ['bazaar_settings', 'deposit_accounts'].sort(),
-    );
+    expect(names.sort()).toEqual(['bazaar_settings', 'deposit_accounts'].sort());
   });
 
   it('외래 키 3개가 올바르게 연결되어 있다', async () => {
@@ -49,8 +46,7 @@ describe('DB-10 Bazaar Settings Schema', () => {
     );
 
     const actual = rows.map(
-      (row) =>
-        `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
+      (row) => `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}`,
     );
 
     expect(actual.sort()).toEqual(
