@@ -50,3 +50,11 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# DB-17: 실제 행사 데이터 보호
+/seed-data/*.csv
+!/seed-data/*.example.csv
+
+# Python 임시 파일
+__pycache__/
+*.pyc
