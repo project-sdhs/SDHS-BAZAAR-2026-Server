@@ -7,12 +7,16 @@ import type { RowDataPacket } from 'mysql2';
 
 import { getPool } from '../../src/db/pool.js';
 
+
 const queries = [
   '01_credit_ledger_balance_check.sql',
   '02_credit_ledger_missing_entries.sql',
   '03_credit_ledger_duplicate_and_amount_check.sql',
   '04_payment_items_total_check.sql',
+  '05_payment_number_check.sql',
+  '06_menu_sales_statistics.sql',
 ];
+
 
 describe('DB-16 Reconciliation Queries', () => {
   for (const filename of queries) {
