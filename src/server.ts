@@ -1,12 +1,8 @@
 import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { checkDbConnection } from './db/pool.js';
-<<<<<<< HEAD
 import { logger } from './config/logger.js';
-=======
 import { connectRedis } from './db/redis.js';
->>>>>>> e19bfb1 (feat(redis): add Redis connection and environment configuration)
-
 const env = loadEnv();
 
 // DB에 먼저 연결해 보고(세션 설정까지 확인), 안 되면 서버를 켜지 않아요.
