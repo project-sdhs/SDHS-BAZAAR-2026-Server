@@ -133,4 +133,36 @@ describe('DB-12 Payment Schema', () => {
 
     expect(rows).toHaveLength(6);
   });
+
+  it('결제 및 일일 카운터의 UNIQUE 제약조건이 존재한다', async () => {
+    const [rows] = await getPool().execute<
+      (RowDataPacket & {
+        TABLE_NAME: string;
+        INDEX_NAME: string;
+      })[]
+    >(
+      `SELECT DISTINCT TABLE_NAME, INDEX_NAME
+       FROM information_schema.STATISTICS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND NON_UNIQUE = 0
+         AND INDEX_NAME IN (
+           'uq_payments_user_idempotency',
+           'uq_payments_booth_daily_number',
+           'uq_booth_daily_payment_counters_date'
+         )`,
+    );
+
+    const actual = rows.map(
+      (row) => `${row.TABLE_NAME}.${row.INDEX_NAME}`,
+    );
+
+    expect(actual.sort()).toEqual(
+      [
+        'payments.uq_payments_user_idempotency',
+        'payments.uq_payments_booth_daily_number',
+        'booth_daily_payment_counters.uq_booth_daily_payment_counters_date',
+      ].sort(),
+    );
+  });
+
 });
