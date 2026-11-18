@@ -2,7 +2,7 @@ import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { checkDbConnection } from './db/pool.js';
 import { logger } from './config/logger.js';
-
+import { connectRedis } from './db/redis.js';
 const env = loadEnv();
 
 // DB에 먼저 연결해 보고(세션 설정까지 확인), 안 되면 서버를 켜지 않아요.
@@ -16,6 +16,15 @@ try {
   );
 }
 logger.info({ db: env.DB_NAME, host: env.DB_HOST, port: env.DB_PORT }, 'DB 연결 OK');
+
+// Redis 연결 확인
+try {
+  await connectRedis();
+} catch (error) {
+  console.error('Redis 연결 실패:', error);
+  process.exit(1);
+}
+
 
 const app = createApp({ uploadDir: env.UPLOAD_DIR });
 

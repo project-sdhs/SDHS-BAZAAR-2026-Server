@@ -5,7 +5,7 @@ import { loadEnv } from '../src/config/env.js';
 /** 꼭 적어야 하는 DB 값만 넣은 환경 변수 */
 const DB_REQUIRED = { DB_USER: 'bazaar', DB_NAME: 'sdhs_bazaar' };
 
-/** DB 값의 기본값 */
+/** DB 및 Redis 환경 변수의 기본값 */
 const DB_DEFAULTS = {
   UPLOAD_DIR: 'uploads',
   DB_HOST: '127.0.0.1',
@@ -13,6 +13,7 @@ const DB_DEFAULTS = {
   DB_USER: 'bazaar',
   DB_PASSWORD: '',
   DB_NAME: 'sdhs_bazaar',
+  REDIS_URL: 'redis://127.0.0.1:6379', // 추가!
 };
 
 describe('loadEnv', () => {
