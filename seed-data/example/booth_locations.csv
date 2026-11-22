@@ -1,0 +1,4 @@
+booth_code,building_name,floor_level,zone_name,x,y
+230001,본관,2,복도,0.42,0.55
+110001,본관,1,로비,0.2,0.3
+900001,운동장,1,,0.5,0.8

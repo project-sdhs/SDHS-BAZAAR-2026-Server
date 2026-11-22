@@ -15,6 +15,8 @@
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.ts",
     "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "db:seed": "tsx --env-file-if-exists=.env src/seed.ts",
+    "seed:check": "tsx src/seed.ts --check",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -1,0 +1,4 @@
+building_name,level,label,map_image_url,width_m,height_m
+본관,1,본관 1층,/files/maps/main-1f.png,60,24
+본관,2,본관 2층,/files/maps/main-2f.png,60,24
+운동장,1,운동장,/files/maps/ground.png,100,70
