@@ -1,25 +1,10 @@
-
 import { randomUUID } from 'node:crypto';
 
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  it,
-} from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  connectRedis,
-  disconnectRedis,
-  getRedisClient,
-} from '../../src/db/redis.js';
+import { connectRedis, disconnectRedis, getRedisClient } from '../../src/db/redis.js';
 
-import {
-  setCache,
-  getCache,
-  deleteCache,
-} from '../../src/db/cache.js';
+import { setCache, getCache, deleteCache } from '../../src/db/cache.js';
 
 describe('DB-02 Redis Cache', () => {
   beforeAll(async () => {
@@ -89,15 +74,11 @@ describe('DB-02 Redis Cache', () => {
   });
 
   it('빈 캐시 키는 거부한다', async () => {
-    await expect(
-      setCache('', 'value'),
-    ).rejects.toThrow('캐시 키가 비어 있습니다.');
+    await expect(setCache('', 'value')).rejects.toThrow('캐시 키가 비어 있습니다.');
   });
 
   it('잘못된 TTL은 거부한다', async () => {
-    await expect(
-      setCache('test', 'value', 0),
-    ).rejects.toThrow('TTL은 양의 정수여야 합니다.');
+    await expect(setCache('test', 'value', 0)).rejects.toThrow('TTL은 양의 정수여야 합니다.');
   });
 
   it('캐시 키가 지정한 TTL과 함께 저장된다', async () => {
@@ -106,9 +87,7 @@ describe('DB-02 Redis Cache', () => {
     try {
       await setCache(key, 'value', 30);
 
-      const ttl = await getRedisClient().ttl(
-        `bazaar:cache:${key}`,
-      );
+      const ttl = await getRedisClient().ttl(`bazaar:cache:${key}`);
 
       expect(ttl).toBeGreaterThan(0);
       expect(ttl).toBeLessThanOrEqual(30);

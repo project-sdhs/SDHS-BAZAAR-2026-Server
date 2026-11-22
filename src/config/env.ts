@@ -21,8 +21,8 @@ const envSchema = z.object({
   DB_PASSWORD: z.string().default(''),
   DB_NAME: z.preprocess(emptyToUndefined, z.string({ error: 'DB_NAME 을 .env 에 적어 주세요.' })),
 
-  // Redis 접속 정보
-  REDIS_URL: z.string().url().default('redis://127.0.0.1:6379'),
+  // Redis 접속 정보 (src/db/redis.ts 에서 사용). 비밀번호가 있으면 redis://:비밀번호@host:port
+  REDIS_URL: z.preprocess(emptyToUndefined, z.url().default('redis://127.0.0.1:6379')),
 });
 
 export type Env = z.infer<typeof envSchema>;

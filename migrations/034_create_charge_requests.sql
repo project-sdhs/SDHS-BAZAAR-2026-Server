@@ -1,5 +1,4 @@
-
--- DB-13: 사용자 크레딧 충전 요청 테이블
+-- DB-12: 사용자 크레딧 충전 요청 테이블
 
 CREATE TABLE charge_requests (
     id BIGINT UNSIGNED NOT NULL

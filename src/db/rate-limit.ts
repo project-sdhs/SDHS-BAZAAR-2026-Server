@@ -1,4 +1,3 @@
-
 import { getRedisClient } from './redis.js';
 
 const KEY_PREFIX = 'bazaar:rate-limit:';
@@ -23,10 +22,7 @@ export async function checkRateLimit(
     throw new Error('요청 제한 횟수는 양의 정수여야 합니다.');
   }
 
-  if (
-    !Number.isSafeInteger(windowSeconds) ||
-    windowSeconds <= 0
-  ) {
+  if (!Number.isSafeInteger(windowSeconds) || windowSeconds <= 0) {
     throw new Error('제한 시간은 양의 정수여야 합니다.');
   }
 

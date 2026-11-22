@@ -1,4 +1,3 @@
-
 import type { Request, Response } from 'express';
 
 import { pingDb } from '../db/pool.js';
@@ -13,10 +12,7 @@ interface HealthResponse {
   time: string;
 }
 
-export async function getHealth(
-  _req: Request,
-  res: Response<HealthResponse>,
-): Promise<void> {
+export async function getHealth(_req: Request, res: Response<HealthResponse>): Promise<void> {
   const [db, redis] = await Promise.all([
     pingDb().then(
       (): Check => 'ok',
@@ -28,8 +24,7 @@ export async function getHealth(
     ),
   ]);
 
-  const status: Check =
-    db === 'ok' && redis === 'ok' ? 'ok' : 'error';
+  const status: Check = db === 'ok' && redis === 'ok' ? 'ok' : 'error';
 
   res.status(status === 'ok' ? 200 : 503).json({
     status,

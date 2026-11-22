@@ -1,4 +1,3 @@
-
 import { describe, expect, it } from 'vitest';
 import type { RowDataPacket } from 'mysql2';
 
@@ -15,7 +14,7 @@ interface ForeignKeyRow extends RowDataPacket {
   REFERENCED_TABLE_NAME: string;
 }
 
-describe('DB-13 Credit and Deposit Schema', () => {
+describe('DB-12 · DB-14 충전 · 입금 · 원장 스키마', () => {
   it('관련 테이블 4개가 존재한다', async () => {
     const [rows] = await getPool().execute<SchemaRow[]>(
       `SELECT TABLE_NAME, COLUMN_NAME
@@ -29,15 +28,10 @@ describe('DB-13 Credit and Deposit Schema', () => {
          )`,
     );
 
-    const actual = [...new Set(rows.map(r => r.TABLE_NAME))];
+    const actual = [...new Set(rows.map((r) => r.TABLE_NAME))];
 
     expect(actual.sort()).toEqual(
-      [
-        'bank_deposits',
-        'charge_requests',
-        'credit_ledger_entries',
-        'deposit_imports',
-      ].sort(),
+      ['bank_deposits', 'charge_requests', 'credit_ledger_entries', 'deposit_imports'].sort(),
     );
   });
 
@@ -55,9 +49,7 @@ describe('DB-13 Credit and Deposit Schema', () => {
          AND REFERENCED_TABLE_NAME IS NOT NULL`,
     );
 
-    const actual = rows.map(
-      r => `${r.TABLE_NAME}.${r.COLUMN_NAME}->${r.REFERENCED_TABLE_NAME}`,
-    );
+    const actual = rows.map((r) => `${r.TABLE_NAME}.${r.COLUMN_NAME}->${r.REFERENCED_TABLE_NAME}`);
 
     const expected = [
       'deposit_imports.deposit_account_id->deposit_accounts',
@@ -87,7 +79,7 @@ describe('DB-13 Credit and Deposit Schema', () => {
          AND TABLE_NAME = 'charge_requests'`,
     );
 
-    const columns = rows.map(r => r.COLUMN_NAME);
+    const columns = rows.map((r) => r.COLUMN_NAME);
 
     expect(columns).toContain('idempotency_key');
     expect(columns).toContain('amount');
@@ -105,7 +97,7 @@ describe('DB-13 Credit and Deposit Schema', () => {
          AND TABLE_NAME = 'bank_deposits'`,
     );
 
-    const columns = rows.map(r => r.COLUMN_NAME);
+    const columns = rows.map((r) => r.COLUMN_NAME);
 
     expect(columns).toContain('deposit_import_id');
     expect(columns).toContain('bank_transaction_no');
@@ -122,7 +114,7 @@ describe('DB-13 Credit and Deposit Schema', () => {
          AND TABLE_NAME = 'credit_ledger_entries'`,
     );
 
-    const columns = rows.map(r => r.COLUMN_NAME);
+    const columns = rows.map((r) => r.COLUMN_NAME);
 
     expect(columns).toContain('entry_type');
     expect(columns).toContain('amount');

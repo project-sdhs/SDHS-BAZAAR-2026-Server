@@ -1,5 +1,4 @@
-
--- DB-13: 은행 입금 CSV 업로드 이력
+-- DB-12: 은행 입금 CSV 업로드 이력
 
 CREATE TABLE deposit_imports (
     id BIGINT UNSIGNED NOT NULL

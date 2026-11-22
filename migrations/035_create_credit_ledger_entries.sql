@@ -1,5 +1,4 @@
-
--- DB-13: 크레딧 원장 테이블
+-- DB-14: 크레딧 원장 테이블
 
 CREATE TABLE credit_ledger_entries (
     id BIGINT UNSIGNED NOT NULL

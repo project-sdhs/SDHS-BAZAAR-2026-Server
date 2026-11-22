@@ -1,4 +1,3 @@
-
 import { getRedisClient } from './redis.js';
 
 const CACHE_PREFIX = 'bazaar:cache:';
@@ -36,16 +35,10 @@ export async function setCache<T>(
     throw new Error('JSON으로 저장할 수 없는 값입니다.');
   }
 
-  await redis.set(
-    `${CACHE_PREFIX}${key}`,
-    serialized,
-    { EX: ttlSeconds },
-  );
+  await redis.set(`${CACHE_PREFIX}${key}`, serialized, { EX: ttlSeconds });
 }
 
-export async function getCache<T>(
-  key: string,
-): Promise<T | null> {
+export async function getCache<T>(key: string): Promise<T | null> {
   validateKey(key);
 
   const redis = getRedisClient();
@@ -63,9 +56,7 @@ export async function getCache<T>(
   return JSON.parse(value) as T;
 }
 
-export async function deleteCache(
-  key: string,
-): Promise<boolean> {
+export async function deleteCache(key: string): Promise<boolean> {
   validateKey(key);
 
   const redis = getRedisClient();

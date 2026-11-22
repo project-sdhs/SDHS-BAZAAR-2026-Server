@@ -1,19 +1,8 @@
-
 import { randomUUID } from 'node:crypto';
 
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  it,
-} from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  connectRedis,
-  disconnectRedis,
-  getRedisClient,
-} from '../../src/db/redis.js';
+import { connectRedis, disconnectRedis, getRedisClient } from '../../src/db/redis.js';
 
 import { checkRateLimit } from '../../src/db/rate-limit.js';
 
@@ -51,9 +40,7 @@ describe('DB-02 Redis Rate Limit', () => {
       expect(fourth.count).toBe(4);
       expect(fourth.retryAfterSeconds).toBeGreaterThan(0);
     } finally {
-      await getRedisClient().del(
-        `bazaar:rate-limit:${key}`,
-      );
+      await getRedisClient().del(`bazaar:rate-limit:${key}`);
     }
   });
 
@@ -76,31 +63,21 @@ describe('DB-02 Redis Rate Limit', () => {
       expect(afterExpiry.allowed).toBe(true);
       expect(afterExpiry.count).toBe(1);
     } finally {
-      await getRedisClient().del(
-        `bazaar:rate-limit:${key}`,
-      );
+      await getRedisClient().del(`bazaar:rate-limit:${key}`);
     }
   });
 
   it('빈 키는 거부한다', async () => {
-    await expect(
-      checkRateLimit('', 3, 60),
-    ).rejects.toThrow('Rate Limit 키가 비어 있습니다.');
+    await expect(checkRateLimit('', 3, 60)).rejects.toThrow('Rate Limit 키가 비어 있습니다.');
   });
 
   it('잘못된 요청 제한 횟수는 거부한다', async () => {
-    await expect(
-      checkRateLimit('test', 0, 60),
-    ).rejects.toThrow(
+    await expect(checkRateLimit('test', 0, 60)).rejects.toThrow(
       '요청 제한 횟수는 양의 정수여야 합니다.',
     );
   });
 
   it('잘못된 제한 시간은 거부한다', async () => {
-    await expect(
-      checkRateLimit('test', 3, 0),
-    ).rejects.toThrow(
-      '제한 시간은 양의 정수여야 합니다.',
-    );
+    await expect(checkRateLimit('test', 3, 0)).rejects.toThrow('제한 시간은 양의 정수여야 합니다.');
   });
 });

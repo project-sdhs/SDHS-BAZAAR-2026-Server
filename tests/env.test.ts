@@ -13,7 +13,7 @@ const DB_DEFAULTS = {
   DB_USER: 'bazaar',
   DB_PASSWORD: '',
   DB_NAME: 'sdhs_bazaar',
-  REDIS_URL: 'redis://127.0.0.1:6379', // 추가!
+  REDIS_URL: 'redis://127.0.0.1:6379',
 };
 
 describe('loadEnv', () => {

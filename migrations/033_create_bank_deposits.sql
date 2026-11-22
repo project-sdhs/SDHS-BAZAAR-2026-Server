@@ -1,5 +1,4 @@
-
--- DB-13: 은행 입금 내역 테이블
+-- DB-12: 은행 입금 내역 테이블
 
 CREATE TABLE bank_deposits (
     id BIGINT UNSIGNED NOT NULL
