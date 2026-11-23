@@ -32,7 +32,10 @@ try {
 }
 logger.info({ host: redisHost }, 'Redis 연결 OK');
 
-const app = createApp({ uploadDir: env.UPLOAD_DIR });
+const app = createApp({
+  uploadDir: env.UPLOAD_DIR,
+  corsAllowedOrigins: env.CORS_ALLOWED_ORIGINS,
+});
 
 app.listen(env.PORT, (error) => {
   if (error) {

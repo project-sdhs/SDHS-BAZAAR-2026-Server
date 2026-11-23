@@ -7,6 +7,10 @@
 
 **API 명세:** [디지텍 바자회 API 명세](https://claude.ai/artifact/Qk2heDHJUYqTrHR9WLBoYR) — 새 API는 이 문서를 기준으로 만들어요.
 
+## 브라우저 CORS 설정
+
+백오피스와 메뉴판 웹 주소만 브라우저 API 접근을 허용해요. `.env`의 `CORS_ALLOWED_ORIGINS`에 실제 주소를 쉼표로 구분해 적어요(예: `https://admin.example.com,https://board.example.com`). 비워 두면 다른 origin에서의 브라우저 접근은 허용되지 않아요. 허용 헤더는 `Authorization`, `Content-Type`, `Idempotency-Key`, `X-Request-Id`이고, 브라우저에서 읽을 수 있도록 `X-Request-Id`, `Retry-After` 응답 헤더를 노출해요.
+
 ## 시작하기
 
 준비물: **Node.js 22.13 이상** (22 LTS 권장 · CI도 최신 22.x), npm, **MySQL 8**
@@ -107,7 +111,7 @@ src/
   services/         # 비즈니스 로직 (예: credit.service.ts)
   repositories/     # DB 읽기/쓰기 · SQL은 여기에만 (app-version.repository.ts)
   models/           # 데이터 타입 · zod 스키마
-  middlewares/      # 공통 미들웨어 (not-found.ts, error-handler.ts, uploads.ts, board-device-auth.ts)
+  middlewares/      # 공통 미들웨어 (cors.ts, not-found.ts, error-handler.ts, uploads.ts, board-device-auth.ts)
   utils/            # 작은 도움 코드 (http-error.ts)
 tests/              # 테스트 (*.test.ts, supertest로 createApp() 호출) · tests/db/ 는 실제 DB 테스트
 migrations/         # 테이블을 만들고 바꾸는 SQL (001_create_app_versions.sql …)

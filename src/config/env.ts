@@ -4,6 +4,22 @@ import { z } from 'zod';
 const emptyToUndefined = (value: unknown) =>
   typeof value === 'string' && value.trim() === '' ? undefined : value;
 
+const corsOriginSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    const url = new URL(value);
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      url.pathname === '/' &&
+      url.search === '' &&
+      url.hash === '' &&
+      url.username === '' &&
+      url.password === ''
+    );
+  }, 'HTTP(S) origin만 입력할 수 있습니다.')
+  .transform((value) => new URL(value).origin);
+
 // 서버가 쓰는 환경 변수 목록. 새 값이 필요하면 여기에 추가하고 .env.example 도 함께 고쳐요.
 const envSchema = z.object({
   NODE_ENV: z.preprocess(
@@ -13,6 +29,17 @@ const envSchema = z.object({
   PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(65535).default(3000)),
   // 이미지 파일을 저장하고 /uploads 로 내려줄 폴더 (상대 경로면 서버를 실행한 위치 기준)
   UPLOAD_DIR: z.preprocess(emptyToUndefined, z.string().default('uploads')),
+  // 백오피스 · 메뉴판 브라우저에서 접근할 origin (쉼표로 구분, 비우면 브라우저 CORS 비활성화)
+  CORS_ALLOWED_ORIGINS: z
+    .preprocess(emptyToUndefined, z.string().default(''))
+    .transform((value) =>
+      value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    )
+    .pipe(z.array(corsOriginSchema))
+    .transform((origins) => [...new Set(origins)]),
 
   // MySQL 접속 정보 (src/db/pool.ts 에서 사용). 사용자 · DB 이름은 꼭 적어야 해요.
   DB_HOST: z.preprocess(emptyToUndefined, z.string().default('127.0.0.1')),

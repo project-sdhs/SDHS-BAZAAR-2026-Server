@@ -8,6 +8,7 @@ const DB_REQUIRED = { DB_USER: 'bazaar', DB_NAME: 'sdhs_bazaar' };
 /** DB 및 Redis 환경 변수의 기본값 */
 const DB_DEFAULTS = {
   UPLOAD_DIR: 'uploads',
+  CORS_ALLOWED_ORIGINS: [],
   DB_HOST: '127.0.0.1',
   DB_PORT: 3306,
   DB_USER: 'bazaar',
@@ -25,6 +26,15 @@ describe('loadEnv', () => {
     expect(
       loadEnv({ ...DB_REQUIRED, PORT: '4000', NODE_ENV: 'production', DB_PORT: '3307' }),
     ).toEqual({ PORT: 4000, NODE_ENV: 'production', ...DB_DEFAULTS, DB_PORT: 3307 });
+  });
+
+  it('CORS origin 목록을 공백 제거 · 중복 제거 후 정규화한다', () => {
+    expect(
+      loadEnv({
+        ...DB_REQUIRED,
+        CORS_ALLOWED_ORIGINS: ' https://admin.example.com/ ,https://admin.example.com',
+      }).CORS_ALLOWED_ORIGINS,
+    ).toEqual(['https://admin.example.com']);
   });
 
   it('PORT= 처럼 비어 있거나 공백뿐인 값은 기본값을 쓴다', () => {
@@ -45,6 +55,12 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...DB_REQUIRED, PORT: '0' })).toThrow(/PORT/);
     expect(() => loadEnv({ ...DB_REQUIRED, NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
     expect(() => loadEnv({ ...DB_REQUIRED, DB_PORT: 'abc' })).toThrow(/DB_PORT/);
+    expect(() =>
+      loadEnv({ ...DB_REQUIRED, CORS_ALLOWED_ORIGINS: 'https://admin.example.com/dashboard' }),
+    ).toThrow(/CORS_ALLOWED_ORIGINS/);
+    expect(() =>
+      loadEnv({ ...DB_REQUIRED, CORS_ALLOWED_ORIGINS: 'ftp://admin.example.com' }),
+    ).toThrow(/CORS_ALLOWED_ORIGINS/);
   });
 
   it('DB_USER · DB_NAME 이 없으면 에러를 던진다', () => {
