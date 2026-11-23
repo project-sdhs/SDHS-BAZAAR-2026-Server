@@ -1,10 +1,12 @@
 import { createApp } from './app.js';
 import { loadEnv } from './config/env.js';
 import { logger } from './config/logger.js';
+import { getAccessTokenSecret } from './config/auth.js';
 import { checkDbConnection } from './db/pool.js';
 import { connectRedis } from './db/redis.js';
 
 const env = loadEnv();
+getAccessTokenSecret(); // 환경 변수가 설정되어 있는지 확인
 
 // DB에 먼저 연결해 보고(세션 설정까지 확인), 안 되면 서버를 켜지 않아요.
 try {
