@@ -120,6 +120,8 @@ uploads/            # 올린 이미지 (UPLOAD_DIR 기본값, git에 안 올라�
 
 새 API에서 입력을 검사할 때는 라우트에 `validateRequest({ body, query, params })` 를 연결하고, 컨트롤러에서는 `res.locals.validated` 값만 사용해요. 실패한 값은 SRV-03 공통 에러 핸들러로 전달되며 `fields` 키는 `amount` 처럼 필드 이름만 사용해요. 특정 필드가 아닌 본문 전체 오류는 `_root` 키에 담아요.
 
+앱 로그인이 필요한 API는 라우트에 `requireAppAuth` 를 먼저 연결해요. `Authorization: Bearer <accessToken>` 을 확인해서, 없거나 위조면 401 `UNAUTHORIZED`, 만료면 401 `TOKEN_EXPIRED`, 탈퇴한 회원이면 401 `UNAUTHORIZED` 로 응답해요. 통과하면 컨트롤러에서 `res.locals.auth.userId` · `res.locals.auth.user` 를 써요. 서버를 켜려면 `.env` 에 `JWT_ACCESS_SECRET`(32자 이상)이 있어야 해요.
+
 ```ts
 import { getPool } from '../db/pool.js';
 
