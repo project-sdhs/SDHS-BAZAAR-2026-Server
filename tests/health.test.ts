@@ -3,53 +3,110 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../src/app.js';
 
-// CI의 기본 테스트에는 DB가 없어서, DB 확인(pingDb)만 가짜로 바꿔요.
-const pingDb = vi.hoisted(() => vi.fn<() => Promise<void>>());
-vi.mock(import('../src/db/pool.js'), async (importOriginal) => ({
-  ...(await importOriginal()),
+// 실제 DB와 Redis에 연결하지 않고 테스트
+const { pingDb, pingRedis } = vi.hoisted(() => ({
+  pingDb: vi.fn<() => Promise<void>>(),
+  pingRedis: vi.fn<() => Promise<void>>(),
+}));
+
+vi.mock('../src/db/pool.js', () => ({
   pingDb,
 }));
+
+vi.mock('../src/db/redis.js', () => ({
+  pingRedis,
+}));
+
+type Check = 'ok' | 'error';
+
+interface HealthResponse {
+  status: Check;
+  db: Check;
+  redis: Check;
+  time: string;
+}
+
+interface ErrorResponse {
+  code: string;
+  message: string;
+  requestId: string;
+}
 
 describe('GET /health', () => {
   beforeEach(() => {
     pingDb.mockReset();
+    pingRedis.mockReset();
+
+    pingDb.mockResolvedValue(undefined);
+    pingRedis.mockResolvedValue(undefined);
   });
 
-  it('DB가 정상이면 200과 { status, db, time } 을 돌려준다', async () => {
-    pingDb.mockResolvedValue();
-
+  it('DB와 Redis가 모두 정상이면 200을 반환한다', async () => {
     const res = await request(createApp()).get('/health');
+    const body = res.body as HealthResponse;
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/application\/json/);
-    expect(res.body).toEqual({ status: 'ok', db: 'ok', time: expect.any(String) as string });
+
+    expect(body).toEqual({
+      status: 'ok',
+      db: 'ok',
+      redis: 'ok',
+      time: expect.any(String) as string,
+    });
   });
 
-  it('time 은 ISO 8601(UTC) 시각이다', async () => {
-    pingDb.mockResolvedValue();
+  it('DB 연결이 실패하면 503을 반환한다', async () => {
+    pingDb.mockRejectedValue(new Error('DB 연결 실패'));
 
     const res = await request(createApp()).get('/health');
-    const { time } = res.body as { time: string };
-
-    expect(new Date(time).toISOString()).toBe(time);
-  });
-
-  it('DB에 연결할 수 없으면 503과 db: error 를 돌려준다', async () => {
-    pingDb.mockRejectedValue(new Error('connect ECONNREFUSED'));
-
-    const res = await request(createApp()).get('/health');
+    const body = res.body as HealthResponse;
 
     expect(res.status).toBe(503);
-    expect(res.body).toEqual({ status: 'error', db: 'error', time: expect.any(String) as string });
+    expect(body.status).toBe('error');
+    expect(body.db).toBe('error');
+    expect(body.redis).toBe('ok');
+  });
+
+  it('Redis 연결이 실패하면 503을 반환한다', async () => {
+    pingRedis.mockRejectedValue(new Error('Redis 연결 실패'));
+
+    const res = await request(createApp()).get('/health');
+    const body = res.body as HealthResponse;
+
+    expect(res.status).toBe(503);
+    expect(body.status).toBe('error');
+    expect(body.db).toBe('ok');
+    expect(body.redis).toBe('error');
+  });
+
+  it('DB와 Redis가 모두 실패하면 503을 반환한다', async () => {
+    pingDb.mockRejectedValue(new Error('DB 연결 실패'));
+    pingRedis.mockRejectedValue(new Error('Redis 연결 실패'));
+
+    const res = await request(createApp()).get('/health');
+    const body = res.body as HealthResponse;
+
+    expect(res.status).toBe(503);
+    expect(body.db).toBe('error');
+    expect(body.redis).toBe('error');
+  });
+
+  it('응답 시각은 UTC ISO 8601 형식이다', async () => {
+    const res = await request(createApp()).get('/health');
+    const body = res.body as HealthResponse;
+
+    expect(new Date(body.time).toISOString()).toBe(body.time);
   });
 });
 
 describe('없는 경로', () => {
-  it('404와 { code, message } 를 돌려준다', async () => {
+  it('404와 NOT_FOUND를 반환한다', async () => {
     const res = await request(createApp()).get('/no-such-path');
+    const body = res.body as ErrorResponse;
 
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({
+    expect(body).toEqual({
       code: 'NOT_FOUND',
       message: expect.any(String) as string,
       requestId: expect.any(String) as string,
