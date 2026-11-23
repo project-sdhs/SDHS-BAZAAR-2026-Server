@@ -1,0 +1,2 @@
+event_name,event_start_date,event_end_date,default_open_time,default_close_time,app_open,charge_min,charge_max,balance_limit,refund_window_hours,daily_payment_no_reset,block_old_qr,deposit_account_key
+디지텍 바자회 (예시),2027-11-20,2027-11-21,10:00,15:00,false,1000,,,24,true,true,main

@@ -14,6 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.ts",
+    "db:seed": "tsx --env-file-if-exists=.env src/seed.ts",
+    "seed:check": "tsx src/seed.ts --check",
     "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
     "db:reconcile": "tsx --env-file-if-exists=.env src/reconcile.ts",
     "lint": "eslint .",
