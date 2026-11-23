@@ -85,6 +85,10 @@ DB 쪽(SQL · 마이그레이션 · 저장소)을 바꿨다면 `npm run test:db`
 - 하루 동안 캐시돼요. 사진을 바꿀 때는 같은 이름에 덮어쓰지 말고 **새 이름으로 저장**하고 DB의 경로를 바꿔요.
 - 사진을 받아서 저장하는 API(부스 · 메뉴 사진 올리기)는 각 기능 티켓에서 만들어요. 저장할 때 `UPLOAD_DIR` 아래에 두면 바로 이 주소로 보여요.
 
+### 메뉴판 기기 인증
+
+메뉴판 기기 토큰은 `Authorization: Bearer <token>` 으로 보내요. SRV-07의 `boardDeviceAuth` 미들웨어는 토큰 원문을 저장하지 않고 SHA-256 해시로 `board_devices` 를 조회해요. 새 기기가 연결돼 이전 연결이 폐기되면 예전 토큰은 `401 BOARD_REPLACED` 를 받아요. 유효한 요청의 `last_seen_at` 은 최대 60초에 한 번만 갱신해요.
+
 에러 응답은 모두 `{ code, message }` 모양이에요. 코드에서 에러를 내려면 `throw new HttpError(404, 'BOOTH_NOT_FOUND', '부스를 찾을 수 없습니다.')`.
 
 ## 폴더 구조
@@ -103,7 +107,7 @@ src/
   services/         # 비즈니스 로직 (예: credit.service.ts)
   repositories/     # DB 읽기/쓰기 · SQL은 여기에만 (app-version.repository.ts)
   models/           # 데이터 타입 · zod 스키마
-  middlewares/      # 공통 미들웨어 (not-found.ts, error-handler.ts, uploads.ts)
+  middlewares/      # 공통 미들웨어 (not-found.ts, error-handler.ts, uploads.ts, board-device-auth.ts)
   utils/            # 작은 도움 코드 (http-error.ts)
 tests/              # 테스트 (*.test.ts, supertest로 createApp() 호출) · tests/db/ 는 실제 DB 테스트
 migrations/         # 테이블을 만들고 바꾸는 SQL (001_create_app_versions.sql …)
