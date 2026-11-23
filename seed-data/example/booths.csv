@@ -1,0 +1,4 @@
+booth_code,name,category,type,grade,class_no,hidden,featured_order,open_time,close_time,description,image_url
+230001,2-3 타코야끼,분식,normal,2,3,false,,10:00,15:00,"겉바속촉 타코야끼, 4알 · 8알",
+110001,1-1 츄러스,간식,normal,1,1,false,,10:00,15:00,시나몬 츄러스,
+900001,학생회 음료,음료,special,,,false,1,10:00,14:00,아이스티 · 레몬에이드,
