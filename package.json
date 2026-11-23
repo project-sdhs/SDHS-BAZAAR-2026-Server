@@ -14,7 +14,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "vitest run --config vitest.db.config.ts",
+    "db:seed": "tsx --env-file-if-exists=.env src/seed.ts",
+    "seed:check": "tsx src/seed.ts --check",
     "db:migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "db:reconcile": "tsx --env-file-if-exists=.env src/reconcile.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -25,6 +28,7 @@
     "mysql2": "^3.24.6",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
+    "redis": "^6.3.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

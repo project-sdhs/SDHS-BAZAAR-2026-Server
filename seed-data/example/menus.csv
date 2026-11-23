@@ -1,0 +1,7 @@
+booth_code,name,description,price,on_sale,sort_order,image_url
+230001,타코야끼 4알,가쓰오부시 듬뿍,2000,true,1,
+230001,타코야끼 8알,,3500,true,2,
+230001,음료 세트,타코야끼 4알 + 음료,3000,false,3,
+110001,츄러스,,1500,true,1,
+900001,아이스티,,1000,true,1,
+900001,레몬에이드,,1500,true,2,

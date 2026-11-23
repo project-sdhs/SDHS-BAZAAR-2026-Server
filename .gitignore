@@ -50,3 +50,8 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# DB-17: 실제 행사 데이터(계좌번호 등)는 올리지 않아요. seed-data/ 안에서는 example/ 과 README.md 만 올려요.
+/seed-data/*
+!/seed-data/example/
+!/seed-data/README.md

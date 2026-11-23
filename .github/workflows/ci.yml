@@ -52,12 +52,23 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=30
+      # Redis 테스트(캐시 · 횟수 제한 · 멱등 키 · 백오피스 세션)도 실제 Redis로 돌려요.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
     env:
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: sdhs_bazaar_test
+      REDIS_URL: redis://127.0.0.1:6379
     steps:
       - uses: actions/checkout@v4
 
@@ -70,4 +81,6 @@ jobs:
       - run: npm ci
       # 빈 DB에 migrations/ 가 처음부터 끝까지 실행되는지 확인
       - run: npm run db:migrate
+      # 마이그레이션만 한 DB에서 대사 쿼리가 모두 돌고 문제 0건인지
+      - run: npm run db:reconcile
       - run: npm run test:db

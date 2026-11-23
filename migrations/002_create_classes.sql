@@ -1,0 +1,20 @@
+
+CREATE TABLE classes (
+    id BIGINT UNSIGNED NOT NULL
+        AUTO_INCREMENT PRIMARY KEY,
+
+    grade SMALLINT NOT NULL
+        CHECK (grade BETWEEN 1 AND 3),
+
+    class_no SMALLINT NOT NULL
+        CHECK (class_no >= 1),
+
+    created_at TIMESTAMP(3) NOT NULL
+        DEFAULT CURRENT_TIMESTAMP(3),
+
+    updated_at TIMESTAMP(3) NOT NULL
+        DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3),
+
+    deleted_at TIMESTAMP(3) NULL
+);
