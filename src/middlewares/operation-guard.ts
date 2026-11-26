@@ -1,51 +1,48 @@
 import type { RequestHandler } from 'express';
 
 import { findActiveSettings } from '../repositories/bazaar-settings.repository.js';
-import { findBoothOperation } from '../repositories/booth-operation.repository.js';
 
-import {
-  checkAppVisibility,
-  checkBazaarOperation,
-  checkEventPeriod,
-  checkOperationHours,
-  type OperationResult,
-} from '../services/bazaar-operation.service.js';
+import { checkAppVisibility, checkEventPeriod } from '../services/bazaar-operation.service.js';
 
-import {
-  checkBoothOperation,
-  type BoothOperationResult,
-} from '../services/booth-operation.service.js';
-
-import { HttpError, NotFoundError } from '../utils/http-error.js';
+import { ConflictError, HttpError } from '../utils/http-error.js';
 
 /**
  * SRV-13: 바자회 운영 상태 검사 미들웨어
  *
- * 실제 API에 연결하기 전 단계.
- * 업무별 세부 오류 코드는 API 명세 확인 후 적용한다.
+ * API 문서 공통 규칙 10 기준.
+ *
+ * 앱 비공개 상태 검사와 행사 종료 후 충전 제한을 담당한다.
+ *
+ * 부스별 주문 상태는 QR 조회 및 결제 서비스에서
+ * assertBoothPaymentAllowed()를 사용하여 검사한다.
  */
 
-function assertAllowed(result: OperationResult | BoothOperationResult): void {
-  if (result.allowed) {
-    return;
-  }
-
-  // 현재는 공통 오류를 사용한다.
-  // 전용 상태 코드는 팀 API 명세에 맞춰 추후 변경한다.
-  throw new HttpError(403, 'FORBIDDEN', `현재 요청을 처리할 수 없습니다. (${result.status})`);
-}
-
 /**
- * 앱 공개 여부 검사
+ * 일반 앱 API의 공개 여부 검사.
  *
- * 일반 사용자 대상 API에 사용한다.
- * 관리자 설정 API에는 일괄 적용하지 않는다.
+ * 비공개 상태에서는 503 APP_NOT_OPEN을 반환한다.
+ *
+ * 다음 경로에는 적용하지 않는다.
+ * - /auth/*
+ * - /users/me
+ * - /settings/public
+ * - /health
+ * - 관리자 백오피스 API
+ *
+ * 실제 앱 라우터 구성 시 위 예외를 반영해야 한다.
+ *
+ * TODO(SRV-20):
+ * 설정 조회를 공개 설정의 10초 캐시와 통합한다.
  */
 export const requireAppOpen: RequestHandler = async (_req, _res, next) => {
   try {
     const settings = await findActiveSettings();
 
-    assertAllowed(checkAppVisibility(settings));
+    const result = checkAppVisibility(settings);
+
+    if (!result.allowed) {
+      throw new HttpError(503, 'APP_NOT_OPEN', '아직 앱이 공개되지 않았습니다.');
+    }
 
     next();
   } catch (error) {
@@ -54,83 +51,29 @@ export const requireAppOpen: RequestHandler = async (_req, _res, next) => {
 };
 
 /**
- * 행사 기간 검사
+ * 충전 요청에 사용하는 행사 종료 검사.
  *
- * 행사 시작일과 종료일을 확인한다.
+ * - 행사 시작 전 충전 허용
+ * - 행사 종료일 당일까지 충전 허용
+ * - 행사 종료일 다음 날 00:00(KST)부터 차단
+ *
+ * 행사 종료 후:
+ * HTTP 409 EVENT_ENDED
+ *
+ * 기본 운영 시간은 충전을 차단하는 조건이 아니다.
  */
 export const requireEventPeriod: RequestHandler = async (_req, _res, next) => {
   try {
     const settings = await findActiveSettings();
 
-    assertAllowed(checkEventPeriod(settings));
+    const result = checkEventPeriod(settings);
 
-    next();
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * 기본 운영 시간 검사
- */
-export const requireOperationHours: RequestHandler = async (_req, _res, next) => {
-  try {
-    const settings = await findActiveSettings();
-
-    assertAllowed(checkOperationHours(settings));
-
-    next();
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * 행사 기간과 운영 시간을 함께 검사한다.
- *
- * 이 함수는 앱 공개 여부를 검사하지 않는다.
- */
-export const requireBazaarOperation: RequestHandler = async (_req, _res, next) => {
-  try {
-    const settings = await findActiveSettings();
-
-    assertAllowed(checkBazaarOperation(settings));
-
-    next();
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * 부스의 운영 상태와 주문 정지 여부를 검사한다.
- *
- * 라우트의 :boothId 매개변수를 사용한다.
- * 실제 결제 API의 파라미터 구조에 맞춰 연결해야 한다.
- */
-export const requireBoothOperation: RequestHandler = async (req, _res, next) => {
-  try {
-    const rawId = req.params.boothId;
-
-    if (typeof rawId !== 'string' || !/^[1-9]\d*$/.test(rawId)) {
-      throw new HttpError(400, 'VALIDATION_FAILED', '올바른 부스 ID가 필요합니다.');
-    }
-
-    const boothId = Number(rawId);
-
-    if (!Number.isSafeInteger(boothId)) {
-      throw new HttpError(400, 'VALIDATION_FAILED', '부스 ID가 올바르지 않습니다.');
-    }
-
-    const booth = await findBoothOperation(boothId);
-
-    if (!booth) {
-      throw new NotFoundError({
-        message: '부스를 찾을 수 없습니다.',
+    if (!result.allowed) {
+      throw new ConflictError({
+        code: 'EVENT_ENDED',
+        message: '바자회가 종료되어 충전할 수 없습니다.',
       });
     }
-
-    assertAllowed(checkBoothOperation(booth));
 
     next();
   } catch (error) {

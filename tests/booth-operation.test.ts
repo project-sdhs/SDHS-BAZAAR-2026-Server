@@ -10,12 +10,13 @@ import { checkBoothOperation } from '../src/services/booth-operation.service.js'
 
 const booth: BoothOperation = {
   id: 1,
+  name: '테스트 부스',
   manualStatus: 'open',
   orderingPaused: false,
+  pausedAt: null,
   openTime: '10:00:00',
   closeTime: '15:00:00',
 };
-
 const at = (iso: string): Date => new Date(iso);
 
 describe('SRV-13 부스 운영 상태 검사', () => {
