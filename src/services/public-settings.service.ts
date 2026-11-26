@@ -1,41 +1,63 @@
+import { deleteCache, getCache, setCache } from '../db/cache.js';
 import type { PublicSettings } from '../models/public-settings.model.js';
 import * as publicSettingsRepository from '../repositories/public-settings.repository.js';
-import { HttpError } from '../utils/http-error.js';
+import { InternalServerError } from '../utils/http-error.js';
 
-function toSafeAmount(value: string): number {
-  const amount = Number(value);
-  if (!Number.isSafeInteger(amount)) {
-    // DB 값이나 계좌 정보는 에러 메시지에 넣지 않아요.
-    throw new Error('공개 설정의 금액이 JavaScript 안전 정수 범위를 벗어났습니다.');
-  }
-  return amount;
+/** getCache · setCache · deleteCache가 공통 접두어를 붙여요. */
+export const PUBLIC_SETTINGS_CACHE_KEY = 'settings:public';
+const CACHE_TTL_SECONDS = 10;
+
+/** PATCH /admin/settings의 DB 저장 완료 후 호출해요. */
+export async function invalidatePublicSettingsCache(): Promise<void> {
+  await deleteCache(PUBLIC_SETTINGS_CACHE_KEY);
 }
 
+function nameExample(rule: string, samples: Record<string, string>): string {
+  return rule.replace(/\{(?:studentNo|name|depositCode)\}/g, (token) => samples[token] ?? token);
+}
+
+/** 공개 API와 앱 공개 검사에서 함께 쓸 수 있는 10초 캐시 설정 조회예요. */
 export async function getPublicSettings(): Promise<PublicSettings> {
-  const settings = await publicSettingsRepository.findPublicSettings();
-  if (!settings) {
-    throw new HttpError(404, 'NOT_FOUND', '등록된 바자회 설정이 없습니다.');
+  try {
+    const cached = await getCache<PublicSettings>(PUBLIC_SETTINGS_CACHE_KEY);
+    if (cached !== null) {
+      return cached;
+    }
+  } catch {
+    // Redis를 사용할 수 없어도 공개 설정은 DB에서 읽어요.
   }
 
-  return {
-    appOpen: settings.app_open === 1,
-    eventName: settings.event_name,
-    eventStartDate: settings.event_start_date,
-    eventEndDate: settings.event_end_date,
-    depositAccount:
-      settings.bank_name !== null && settings.account_no !== null && settings.holder_name !== null
-        ? {
-            bank: settings.bank_name,
-            accountNo: settings.account_no,
-            holder: settings.holder_name,
-          }
-        : null,
-    depositorNameRule: settings.depositor_name_rule,
-    depositorNameExample: '2205 이재원',
-    depositorNameRuleWithCode: settings.depositor_name_rule_with_code,
-    depositorNameExampleWithCode: 'V3071 김하린',
-    chargeMin: toSafeAmount(settings.charge_min),
-    chargeMax: settings.charge_max === null ? null : toSafeAmount(settings.charge_max),
-    balanceLimit: settings.balance_limit === null ? null : toSafeAmount(settings.balance_limit),
+  const settings = await publicSettingsRepository.findPublicSettings();
+  if (!settings) {
+    // 마이그레이션이 보장하는 설정 1행이 없으면 배포/데이터 오류예요.
+    throw new InternalServerError();
+  }
+
+  const result: PublicSettings = {
+    appOpen: settings.appOpen,
+    eventName: settings.eventName,
+    eventStartDate: settings.eventStartDate,
+    eventEndDate: settings.eventEndDate,
+    depositAccount: settings.depositAccount,
+    depositorNameRule: settings.depositorNameRule,
+    depositorNameExample: nameExample(settings.depositorNameRule, {
+      '{studentNo}': '2205',
+      '{name}': '이재원',
+    }),
+    depositorNameRuleWithCode: settings.depositorNameRuleWithCode,
+    depositorNameExampleWithCode: nameExample(settings.depositorNameRuleWithCode, {
+      '{depositCode}': 'V3071',
+      '{name}': '김하린',
+    }),
+    chargeMin: settings.chargeMin,
+    chargeMax: settings.chargeMax,
+    balanceLimit: settings.balanceLimit,
   };
+
+  try {
+    await setCache(PUBLIC_SETTINGS_CACHE_KEY, result, CACHE_TTL_SECONDS);
+  } catch {
+    // 캐시 저장 실패가 정상 DB 응답을 막지 않아요.
+  }
+  return result;
 }

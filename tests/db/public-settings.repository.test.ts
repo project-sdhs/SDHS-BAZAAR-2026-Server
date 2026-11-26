@@ -1,11 +1,27 @@
 import type { ResultSetHeader } from 'mysql2';
-import type { PoolConnection } from 'mysql2/promise';
+import type { Pool, PoolConnection } from 'mysql2/promise';
 import request from 'supertest';
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type MockInstance,
+} from 'vitest';
 
 import { createApp } from '../../src/app.js';
 import { closePool, getPool } from '../../src/db/pool.js';
+import { getCache } from '../../src/db/cache.js';
+import { connectRedis, disconnectRedis, getRedisClient } from '../../src/db/redis.js';
 import { findPublicSettings } from '../../src/repositories/public-settings.repository.js';
+import {
+  invalidatePublicSettingsCache,
+  PUBLIC_SETTINGS_CACHE_KEY,
+} from '../../src/services/public-settings.service.js';
 
 const app = createApp();
 
@@ -13,14 +29,20 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
   let connection: PoolConnection;
   let settingsId: number;
   let accountId: number;
+  let executeSpy: MockInstance<Pool['execute']>;
+
+  beforeAll(async () => {
+    await connectRedis();
+  });
 
   beforeEach(async () => {
+    await invalidatePublicSettingsCache();
     const pool = getPool();
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
     // 저장소의 실제 SQL을 같은 트랜잭션에서 실행하고, 테스트 후 시드까지 원래대로 복원해요.
-    vi.spyOn(pool, 'execute').mockImplementation(connection.execute.bind(connection));
+    executeSpy = vi.spyOn(pool, 'execute').mockImplementation(connection.execute.bind(connection));
     await connection.execute('UPDATE bazaar_settings SET deleted_at = CURRENT_TIMESTAMP(3)');
     const [account] = await connection.execute<ResultSetHeader>(
       'INSERT INTO deposit_accounts (bank_name, account_no, holder_name) VALUES (?, ?, ?)',
@@ -50,16 +72,21 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
 
   afterEach(async () => {
     vi.restoreAllMocks();
-    if (connection) {
-      try {
-        await connection.rollback();
-      } finally {
-        connection.release();
+    try {
+      await invalidatePublicSettingsCache();
+    } finally {
+      if (connection) {
+        try {
+          await connection.rollback();
+        } finally {
+          connection.release();
+        }
       }
     }
   });
 
   afterAll(async () => {
+    await disconnectRedis();
     await closePool();
   });
 
@@ -78,9 +105,9 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
         holder: '통합테스트 학생회',
       },
       depositorNameRule: '{name} {studentNo}',
-      depositorNameExample: '2205 이재원',
+      depositorNameExample: '이재원 2205',
       depositorNameRuleWithCode: '{name} {depositCode}',
-      depositorNameExampleWithCode: 'V3071 김하린',
+      depositorNameExampleWithCode: '김하린 V3071',
       chargeMin: 3000,
       chargeMax: 70000,
       balanceLimit: 150000,
@@ -94,7 +121,7 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
       ['삭제된 설정', '2030-01-01', '2030-01-02'],
     );
 
-    expect(await findPublicSettings()).toMatchObject({ event_name: 'DB 테스트 행사' });
+    expect(await findPublicSettings()).toMatchObject({ eventName: 'DB 테스트 행사' });
   });
 
   it('app_open=0 이어도 인증 없이 200 과 false 를 반환한다', async () => {
@@ -129,31 +156,32 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
     expect(res.body).toMatchObject({ eventName: 'DB 테스트 행사', depositAccount: null });
   });
 
-  it('DATE 와 BIGINT 를 문자열로 읽고 nullable 한도는 null 을 유지한다', async () => {
+  it('DATE 는 문자열, BIGINT 는 number, nullable 한도는 null 로 반환한다', async () => {
     await connection.execute(
       'UPDATE bazaar_settings SET charge_max = NULL, balance_limit = NULL WHERE id = ?',
       [settingsId],
     );
 
     expect(await findPublicSettings()).toMatchObject({
-      event_start_date: '2027-12-31',
-      event_end_date: '2028-01-01',
-      charge_min: '3000',
-      charge_max: null,
-      balance_limit: null,
+      eventStartDate: '2027-12-31',
+      eventEndDate: '2028-01-01',
+      chargeMin: 3000,
+      chargeMax: null,
+      balanceLimit: null,
     });
     const res = await request(app).get('/settings/public');
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ chargeMin: 3000, chargeMax: null, balanceLimit: null });
   });
 
-  it('살아 있는 설정이 없으면 저장소는 null, HTTP 응답은 공통 404 이다', async () => {
+  it('살아 있는 설정이 없으면 저장소는 null, HTTP 응답은 공통 500 이다', async () => {
     await connection.execute('UPDATE bazaar_settings SET deleted_at = CURRENT_TIMESTAMP(3)');
 
     expect(await findPublicSettings()).toBeNull();
     const res = await request(app).get('/settings/public');
-    expect(res.status).toBe(404);
-    expect(res.body).toMatchObject({ code: 'NOT_FOUND', requestId: res.headers['x-request-id'] });
+    expect(res.status).toBe(500);
+    expect(res.body).toMatchObject({ code: 'INTERNAL', requestId: res.headers['x-request-id'] });
+    expect(await getCache(PUBLIC_SETTINGS_CACHE_KEY)).toBeNull();
   });
 
   it('안전 정수 최댓값을 MySQL에서 읽어 정확한 number 로 반환한다', async () => {
@@ -177,7 +205,7 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
       settingsId,
     ]);
 
-    expect(await findPublicSettings()).toMatchObject({ charge_max: '9223372036854775807' });
+    await expect(findPublicSettings()).rejects.toThrow('안전 정수 범위');
     const res = await request(app).get('/settings/public');
     expect(res.status).toBe(500);
     expect(res.body).toEqual({
@@ -185,5 +213,56 @@ describe('public-settings.repository (실제 DB · HTTP)', () => {
       message: '서버 오류예요. 잠시 후 다시 시도해 주세요.',
       requestId: res.headers['x-request-id'],
     });
+  });
+
+  it('Redis hit 는 DB 를 다시 읽지 않고 무효화 후에는 새 DB 값과 예시를 읽는다', async () => {
+    const first = await request(app).get('/settings/public');
+    expect(first.status).toBe(200);
+    expect(executeSpy).toHaveBeenCalledTimes(1);
+
+    await connection.execute(
+      'UPDATE bazaar_settings SET event_name = ?, depositor_name_rule = ? WHERE id = ?',
+      ['변경된 행사', '{studentNo}-{name}', settingsId],
+    );
+
+    const cached = await request(app).get('/settings/public');
+    expect(cached.status).toBe(200);
+    expect(cached.body).toEqual(first.body);
+    expect(executeSpy).toHaveBeenCalledTimes(1);
+
+    await invalidatePublicSettingsCache();
+    expect(await getCache(PUBLIC_SETTINGS_CACHE_KEY)).toBeNull();
+    const refreshed = await request(app).get('/settings/public');
+    expect(refreshed.status).toBe(200);
+    expect(refreshed.body).toMatchObject({
+      eventName: '변경된 행사',
+      depositorNameExample: '2205-이재원',
+    });
+    expect(executeSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('실제 Redis 에 공개 응답을 저장하고 TTL 을 10초로 제한한다', async () => {
+    const response = await request(app).get('/settings/public');
+
+    expect(response.status).toBe(200);
+    expect(await getCache(PUBLIC_SETTINGS_CACHE_KEY)).toEqual(response.body);
+    const ttl = await getRedisClient().ttl(`bazaar:cache:${PUBLIC_SETTINGS_CACHE_KEY}`);
+    expect(ttl).toBeGreaterThan(0);
+    expect(ttl).toBeLessThanOrEqual(10);
+  });
+
+  it('Redis 연결이 없어도 실제 DB 설정을 HTTP 200 으로 반환한다', async () => {
+    await disconnectRedis();
+    try {
+      const response = await request(app).get('/settings/public');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        eventName: 'DB 테스트 행사',
+        depositorNameExample: '이재원 2205',
+      });
+    } finally {
+      await connectRedis();
+    }
   });
 });
