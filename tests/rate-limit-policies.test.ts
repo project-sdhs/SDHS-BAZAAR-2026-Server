@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { checkRateLimit } from '../src/db/rate-limit.js';
 import { errorHandler } from '../src/middlewares/error-handler.js';
-import { createRateLimitMiddlewares } from '../src/middlewares/rate-limit-policies.js';
+import {
+  createRateLimitMiddlewares,
+  RATE_LIMIT_POLICIES,
+} from '../src/middlewares/rate-limit-policies.js';
 
 vi.mock('../src/db/rate-limit.js', () => ({
   checkRateLimit: vi.fn(),
@@ -12,31 +15,52 @@ vi.mock('../src/db/rate-limit.js', () => ({
 
 const mockedCheckRateLimit = vi.mocked(checkRateLimit);
 
-const policies = {
-  // 실제 운영 정책값이 아닌 테스트 전용 값
-  login: { limit: 3, windowSeconds: 60 },
-  qr: { limit: 10, windowSeconds: 60 },
-  payment: { limit: 5, windowSeconds: 60 },
-  charge: { limit: 4, windowSeconds: 60 },
-  menu: { limit: 20, windowSeconds: 60 },
+/**
+ * 테스트에서만 인증된 사용자 ID를 주입한다.
+ *
+ * 실제 서버에서는 requireAppAuth를 사용해야 한다.
+ */
+const fakeAuth: express.RequestHandler = (req, res, next) => {
+  res.locals.auth = {
+    userId: Number(req.headers['x-test-user-id'] ?? 101),
+  };
+
+  next();
+};
+
+/**
+ * 테스트에서만 부스 코드 검증을 흉내 낸다.
+ *
+ * 실제 메뉴판 연결 API에서는
+ * DB 검증 이후에 verifiedBoardConnect를 설정해야 한다.
+ */
+const fakeBoardValidation: express.RequestHandler = (req, res, next) => {
+  const boothCode = req.params.boothCode;
+
+  if (typeof boothCode !== 'string' || !['ABC123', 'DEF456'].includes(boothCode)) {
+    res.sendStatus(400);
+    return;
+  }
+
+  res.locals.verifiedBoardConnect = {
+    boothCode,
+  };
+
+  next();
 };
 
 function createTestApp() {
   const app = express();
-  const limits = createRateLimitMiddlewares(policies);
 
-  // 테스트에서만 사용자 ID를 주입한다.
-  // 실제 API에서는 requireAppAuth를 사용해야 한다.
-  const fakeAuth: express.RequestHandler = (_req, res, next) => {
-    res.locals.auth = { userId: 101 };
-    next();
-  };
+  app.set('trust proxy', 'loopback');
+
+  const limits = createRateLimitMiddlewares();
 
   app.post('/login', limits.login, (_req, res) => {
     res.sendStatus(200);
   });
 
-  app.get('/qr', limits.qr, (_req, res) => {
+  app.get('/qr', fakeAuth, limits.qr, (_req, res) => {
     res.sendStatus(200);
   });
 
@@ -48,7 +72,7 @@ function createTestApp() {
     res.sendStatus(200);
   });
 
-  app.get('/menu', limits.menu, (_req, res) => {
+  app.get('/menu/:boothCode', fakeBoardValidation, limits.menu, (_req, res) => {
     res.sendStatus(200);
   });
 
@@ -57,72 +81,146 @@ function createTestApp() {
   return app;
 }
 
-describe('SRV-12 Rate Limit Policies', () => {
+function usedKeys(): string[] {
+  return mockedCheckRateLimit.mock.calls.map(([key]) => key);
+}
+
+describe('SRV-12 공식 Rate Limit 정책', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     mockedCheckRateLimit.mockResolvedValue({
       allowed: true,
       count: 1,
-      remaining: 2,
+      remaining: 4,
       retryAfterSeconds: 0,
     });
   });
 
-  it('기능별로 서로 다른 제한 키를 사용한다', async () => {
-    const app = createTestApp();
-
-    expect((await request(app).post('/login')).status).toBe(200);
-    expect((await request(app).get('/qr')).status).toBe(200);
-    expect((await request(app).post('/payment')).status).toBe(200);
-    expect((await request(app).post('/charge')).status).toBe(200);
-    expect((await request(app).get('/menu')).status).toBe(200);
-
-    const keys = mockedCheckRateLimit.mock.calls.map(([key]) => key);
-
-    expect(keys[0]).toMatch(/^login:/);
-    expect(keys[1]).toMatch(/^qr:/);
-    expect(keys[2]).toBe('payment:user:101');
-    expect(keys[3]).toBe('charge:user:101');
-    expect(keys[4]).toMatch(/^menu:/);
-
-    expect(new Set(keys).size).toBe(5);
+  it('공식 제한 횟수와 시간을 사용한다', () => {
+    expect(RATE_LIMIT_POLICIES).toEqual({
+      login: {
+        limit: 300,
+        windowSeconds: 60,
+      },
+      qr: {
+        limit: 30,
+        windowSeconds: 60,
+      },
+      payment: {
+        limit: 10,
+        windowSeconds: 60,
+      },
+      charge: {
+        limit: 5,
+        windowSeconds: 600,
+      },
+      menu: {
+        limit: 5,
+        windowSeconds: 600,
+      },
+    });
   });
 
-  it('기능별 제한 횟수와 시간이 올바르게 전달된다', async () => {
+  it('모든 기능에 공식 제한값을 전달한다', async () => {
     const app = createTestApp();
 
     await request(app).post('/login');
     await request(app).get('/qr');
     await request(app).post('/payment');
     await request(app).post('/charge');
-    await request(app).get('/menu');
+    await request(app).get('/menu/ABC123');
 
-    expect(mockedCheckRateLimit).toHaveBeenNthCalledWith(
-      1,
-      expect.stringMatching(/^login:/),
-      3,
-      60,
-    );
+    const calls = mockedCheckRateLimit.mock.calls;
 
-    expect(mockedCheckRateLimit).toHaveBeenNthCalledWith(2, expect.stringMatching(/^qr:/), 10, 60);
+    expect(calls).toHaveLength(5);
 
-    expect(mockedCheckRateLimit).toHaveBeenNthCalledWith(3, 'payment:user:101', 5, 60);
-
-    expect(mockedCheckRateLimit).toHaveBeenNthCalledWith(4, 'charge:user:101', 4, 60);
-
-    expect(mockedCheckRateLimit).toHaveBeenNthCalledWith(
-      5,
-      expect.stringMatching(/^menu:/),
-      20,
-      60,
-    );
+    expect(calls[0]?.slice(1)).toEqual([300, 60]);
+    expect(calls[1]?.slice(1)).toEqual([30, 60]);
+    expect(calls[2]?.slice(1)).toEqual([10, 60]);
+    expect(calls[3]?.slice(1)).toEqual([5, 600]);
+    expect(calls[4]?.slice(1)).toEqual([5, 600]);
   });
 
-  it('기능별 제한 초과 시 HTTP 429를 반환한다', async () => {
+  it('QR, 결제, 충전은 사용자 ID를 기준으로 제한한다', async () => {
+    const app = createTestApp();
+
+    await request(app).get('/qr');
+    await request(app).post('/payment');
+    await request(app).post('/charge');
+
+    expect(usedKeys()).toEqual(['qr:user:101', 'payment:user:101', 'charge:user:101']);
+  });
+
+  it('QR 조회는 사용자마다 다른 Redis 키를 사용한다', async () => {
+    const app = createTestApp();
+
+    await request(app).get('/qr').set('x-test-user-id', '101');
+
+    await request(app).get('/qr').set('x-test-user-id', '202');
+
+    expect(usedKeys()).toEqual(['qr:user:101', 'qr:user:202']);
+  });
+
+  it('메뉴판은 동일 IP라도 부스별로 키를 구분한다', async () => {
+    const app = createTestApp();
+
+    await request(app).get('/menu/ABC123').set('X-Forwarded-For', '203.0.113.10');
+
+    await request(app).get('/menu/DEF456').set('X-Forwarded-For', '203.0.113.10');
+
+    expect(usedKeys()).toEqual([
+      'board-connect:ip:203.0.113.10:booth:ABC123',
+      'board-connect:ip:203.0.113.10:booth:DEF456',
+    ]);
+  });
+
+  it('메뉴판은 같은 부스라도 IP별로 키를 구분한다', async () => {
+    const app = createTestApp();
+
+    await request(app).get('/menu/ABC123').set('X-Forwarded-For', '203.0.113.10');
+
+    await request(app).get('/menu/ABC123').set('X-Forwarded-For', '203.0.113.20');
+
+    expect(usedKeys()).toEqual([
+      'board-connect:ip:203.0.113.10:booth:ABC123',
+      'board-connect:ip:203.0.113.20:booth:ABC123',
+    ]);
+  });
+
+  it('검증되지 않은 부스 코드는 Redis 키로 사용하지 않는다', async () => {
+    const response = await request(createTestApp()).get('/menu/INVALID');
+
+    expect(response.status).toBe(400);
+    expect(mockedCheckRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('인증되지 않은 QR 조회는 HTTP 401을 반환한다', async () => {
+    const app = express();
+
+    const limits = createRateLimitMiddlewares();
+
+    app.get('/qr', limits.qr, (_req, res) => {
+      res.sendStatus(200);
+    });
+
+    app.use(errorHandler);
+
+    const response = await request(app).get('/qr');
+
+    expect(response.status).toBe(401);
+
+    expect(response.body).toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
+
+    expect(mockedCheckRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('제한 초과 시 HTTP 429 RATE_LIMITED를 반환한다', async () => {
     mockedCheckRateLimit.mockResolvedValue({
       allowed: false,
-      count: 4,
+      count: 301,
       remaining: 0,
       retryAfterSeconds: 30,
     });
@@ -130,9 +228,11 @@ describe('SRV-12 Rate Limit Policies', () => {
     const response = await request(createTestApp()).post('/login');
 
     expect(response.status).toBe(429);
+
     expect(response.body).toMatchObject({
       code: 'RATE_LIMITED',
     });
+
     expect(response.headers['retry-after']).toBe('30');
   });
 });

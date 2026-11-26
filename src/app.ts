@@ -18,6 +18,10 @@ export function createApp({ uploadDir = 'uploads' }: AppOptions = {}): Express {
 
   app.disable('x-powered-by');
 
+  // SRV-12: 로컬 역방향 프록시만 신뢰한다.
+  // 모든 프록시를 신뢰하는 true는 사용하지 않는다.
+  app.set('trust proxy', 'loopback');
+
   // 요청 ID · 요청 로그. express.json() 보다 먼저 와야 JSON 파싱 에러에도 요청 ID가 붙어요.
   app.use(requestLogger);
   app.use(express.json());
