@@ -16,12 +16,19 @@ beforeAll(async () => {
         [file, await readFile(path.join(EXAMPLE_DIR, `${file}.csv`), 'utf8')] as const,
     ),
   );
+
   example = Object.fromEntries(entries) as Record<SeedFile, string>;
 });
 
-/** example 에서 한 파일의 글자를 바꿔서 검사 */
+/**
+ * 예시 CSV에서 하나의 파일 내용만 수정해 검증한다.
+ * 원본 CSV 파일은 변경하지 않는다.
+ */
 function validateWith(file: SeedFile, change: (text: string) => string) {
-  return validateSeed({ ...example, [file]: change(example[file]) });
+  return validateSeed({
+    ...example,
+    [file]: change(example[file]),
+  });
 }
 
 describe('validateSeed', () => {
@@ -29,6 +36,7 @@ describe('validateSeed', () => {
     const { data, errors } = await validateSeedDir(EXAMPLE_DIR);
 
     expect(errors).toEqual([]);
+
     expect(data?.booths[0]).toEqual({
       boothCode: '230001',
       name: '2-3 타코야끼',
@@ -43,6 +51,7 @@ describe('validateSeed', () => {
       description: '겉바속촉 타코야끼, 4알 · 8알',
       imageUrl: null,
     });
+
     expect(data?.settings?.depositAccountKey).toBe('main');
     expect(data?.settings?.chargeMax).toBeNull();
   });
@@ -51,6 +60,7 @@ describe('validateSeed', () => {
     const { zones: _zones, ...withoutZones } = example;
 
     expect(validateSeed(withoutZones).errors).toContain('zones.csv: 파일이 없습니다.');
+
     expect(
       validateWith('booths', (text) => text.replace('booth_code,', 'class_id,')).errors[0],
     ).toMatch(/^booths\.csv:1 헤더가 다릅니다\. 없는 열: booth_code \/ 모르는 열: class_id/);
@@ -60,6 +70,7 @@ describe('validateSeed', () => {
     expect(validateWith('booths', (text) => text.replace('110001', '11001')).errors).toContain(
       'booths.csv:3 booth_code: 부스 코드는 숫자 6자리예요. (예: 230001)',
     );
+
     expect(validateWith('booths', (text) => text.replace('110001', '230001')).errors).toContain(
       "booths.csv:3 부스 코드 '230001' 가 2번 줄과 겹칩니다.",
     );
@@ -71,9 +82,11 @@ describe('validateSeed', () => {
     ).toContain(
       'booths.csv:2 grade: 일반(normal) 부스는 운영 반의 grade · class_no 를 적어야 합니다.',
     );
+
     expect(
       validateWith('booths', (text) => text.replace('normal,1,1,', 'normal,2,3,')).errors,
     ).toContain("booths.csv:3 운영 반(반당 부스 1개) '2학년 3반' 가 2번 줄과 겹칩니다.");
+
     expect(
       validateWith('booths', (text) => text.replace('special,,,', 'special,3,1,')).errors,
     ).toContain('booths.csv:4 grade: 특별(special) 부스는 grade · class_no 를 비워 두세요.');
@@ -85,36 +98,59 @@ describe('validateSeed', () => {
     ).errors;
 
     expect(errors).toContain("booths.csv:2 hidden: true 또는 false 로 적어 주세요. (지금 'no')");
+
     expect(errors).toContain(
       "booths.csv:2 open_time: 시각은 HH:mm 로 적어 주세요. (예: 10:00, 지금 '10시')",
     );
+
     expect(validateWith('menus', (text) => text.replace(',2000,', ',100001,')).errors).toContain(
       "menus.csv:2 price: 1~100000 정수여야 합니다. (지금 '100001')",
     );
+
     expect(validateWith('booth_locations', (text) => text.replace('0.42', '1.2')).errors).toContain(
       "booth_locations.csv:2 x: 0 이상 1 이하 숫자여야 합니다. (지금 '1.2')",
     );
   });
 
   it('다른 파일을 가리키는 이름 · 코드가 그 파일에 있어야 한다', () => {
+    // 존재하지 않는 부스 코드
     expect(
       validateWith('menus', (text) => text.replace('110001,츄러스', '999999,츄러스')).errors,
     ).toContain("menus.csv:5 booths.csv 에 없는 부스 코드 '999999'");
+
+    // 존재하지 않는 구역
     expect(
       validateWith('booth_locations', (text) => text.replace('복도', '강당')).errors,
     ).toContain("booth_locations.csv:2 zones.csv 에 없는 구역 '강당'");
+
+    // 존재하지 않는 층
     expect(
       validateWith('zones', (text) => text.replace('본관,2,복도', '별관,2,복도')).errors,
     ).toContain("zones.csv:3 floors.csv 에 없는 층 '별관 2층'");
-    expect(
-      validateWith('bazaar_settings', (text) => text.replace(/,main\n/, ',sub\n')).errors,
-    ).toContain("bazaar_settings.csv:2 deposit_accounts.csv 에 없는 account_key 'sub'");
+
+    // 존재하지 않는 입금 계좌
+    // Windows CRLF, LF, 마지막 줄바꿈 없는 CSV 모두 지원
+    const changedSettings = example.bazaar_settings.replace(/,main(?=\r?\n?$)/, ',sub');
+
+    // 테스트 데이터가 실제로 변경됐는지 먼저 확인
+    expect(changedSettings).not.toBe(example.bazaar_settings);
+    expect(changedSettings).toContain(',sub');
+
+    const errors = validateSeed({
+      ...example,
+      bazaar_settings: changedSettings,
+    }).errors;
+
+    expect(errors).toContain(
+      "bazaar_settings.csv:2 deposit_accounts.csv 에 없는 account_key 'sub'",
+    );
   });
 
   it('설정은 0행 또는 1행', () => {
     const header = example.bazaar_settings.split('\n')[0];
 
     expect(validateWith('bazaar_settings', () => `${header}\n`).data?.settings).toBeNull();
+
     expect(
       validateWith('bazaar_settings', (text) => text + text.split('\n')[1] + '\n').errors,
     ).toContain('bazaar_settings.csv:3 설정은 1행만 적어요. (DB의 설정 1행을 이 값으로 바꿔요)');
