@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 
-import { findActiveSettings } from '../repositories/bazaar-settings.repository.js';
+import { getPublicSettings } from '../services/public-settings.service.js';
 
 import { checkAppVisibility, checkEventPeriod } from '../services/bazaar-operation.service.js';
 
@@ -36,7 +36,7 @@ import { ConflictError, HttpError } from '../utils/http-error.js';
  */
 export const requireAppOpen: RequestHandler = async (_req, _res, next) => {
   try {
-    const settings = await findActiveSettings();
+    const settings = await getPublicSettings();
 
     const result = checkAppVisibility(settings);
 
@@ -64,7 +64,7 @@ export const requireAppOpen: RequestHandler = async (_req, _res, next) => {
  */
 export const requireEventPeriod: RequestHandler = async (_req, _res, next) => {
   try {
-    const settings = await findActiveSettings();
+    const settings = await getPublicSettings();
 
     const result = checkEventPeriod(settings);
 
